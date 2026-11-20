@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Inter_Tight } from "next/font/google";
+import { Instrument_Serif, Inter_Tight } from "next/font/google";
 import type { ReactNode } from "react";
 import { MotionProvider } from "@/components/animations/motion-provider";
 import { siteConfig } from "@/config/site";
@@ -9,6 +9,15 @@ const interTight = Inter_Tight({
   subsets: ["latin"],
   display: "swap",
   variable: "--font-inter-tight",
+});
+
+/** Accent face for a few emphasised words only — italic 400, single file. */
+const instrumentSerif = Instrument_Serif({
+  subsets: ["latin"],
+  weight: "400",
+  style: "italic",
+  display: "swap",
+  variable: "--font-instrument-serif",
 });
 
 export const metadata: Metadata = {
@@ -23,7 +32,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   return (
-    <html lang="en-GB" className={interTight.variable}>
+    <html lang="en-GB" className={`${interTight.variable} ${instrumentSerif.variable}`}>
       <body className="min-h-dvh">
         <a
           href="#main-content"

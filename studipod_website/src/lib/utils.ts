@@ -1,5 +1,18 @@
 import { clsx, type ClassValue } from "clsx";
-import { twMerge } from "tailwind-merge";
+import { extendTailwindMerge } from "tailwind-merge";
+
+/**
+ * tailwind-merge must know the custom font-size tokens defined in globals.css,
+ * otherwise `text-headline` and `text-ink` are treated as conflicting colours
+ * and one of them is silently dropped.
+ */
+const twMerge = extendTailwindMerge({
+  extend: {
+    theme: {
+      text: ["eyebrow", "display", "headline", "title", "lead"],
+    },
+  },
+});
 
 /** Merge conditional class names and resolve conflicting Tailwind utilities. */
 export function cn(...inputs: ClassValue[]): string {

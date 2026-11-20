@@ -8,6 +8,7 @@
 @theme {
   /* Typography */
   --font-sans: var(--font-inter-tight), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-instrument-serif), ui-serif, Georgia, serif;
 
   --text-eyebrow: 0.75rem;
   --text-eyebrow--line-height: 1rem;
@@ -81,6 +82,30 @@
 
   --animate-float: float 9s ease-in-out infinite;
   --animate-drift: drift 18s ease-in-out infinite;
+  --animate-rise: rise 0.9s var(--ease-out-expo) both;
+  --animate-draw: draw 1.1s var(--ease-out-expo) 0.75s both;
+
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translate3d(0, 0.55em, 0);
+    }
+    to {
+      opacity: 1;
+      transform: translate3d(0, 0, 0);
+    }
+  }
+
+  @keyframes draw {
+    from {
+      stroke-dasharray: 1;
+      stroke-dashoffset: 1;
+    }
+    to {
+      stroke-dasharray: 1;
+      stroke-dashoffset: 0;
+    }
+  }
 
   @keyframes float {
     0%,
