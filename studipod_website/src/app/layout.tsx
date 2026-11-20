@@ -3,6 +3,7 @@ import { Instrument_Serif, Inter_Tight } from "next/font/google";
 import { headers } from "next/headers";
 import type { ReactNode } from "react";
 import { MotionProvider } from "@/components/animations/motion-provider";
+import { StructuredData } from "@/components/seo/structured-data";
 import { siteConfig } from "@/config/site";
 import "./globals.css";
 
@@ -22,8 +23,44 @@ const instrumentSerif = Instrument_Serif({
 });
 
 export const metadata: Metadata = {
-  title: siteConfig.title,
+  metadataBase: new URL(siteConfig.url),
+  title: {
+    default: siteConfig.title,
+    template: `%s — ${siteConfig.name}`,
+  },
   description: siteConfig.description,
+  applicationName: siteConfig.name,
+  authors: [{ name: siteConfig.legalName }],
+  creator: siteConfig.legalName,
+  publisher: siteConfig.legalName,
+  keywords: [
+    "StudiPod",
+    "collaborative learning",
+    "exam preparation",
+    "study groups",
+    "peer-to-peer learning",
+    "study partners",
+  ],
+  alternates: { canonical: "/" },
+  openGraph: {
+    type: "website",
+    url: "/",
+    siteName: siteConfig.name,
+    title: siteConfig.title,
+    description: siteConfig.description,
+    locale: siteConfig.locale,
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: siteConfig.title,
+    description: siteConfig.description,
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: { index: true, follow: true, "max-image-preview": "large" },
+  },
+  formatDetection: { telephone: false, email: false, address: false },
 };
 
 export const viewport: Viewport = {
@@ -45,6 +82,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
             {"[data-reveal]{opacity:1!important;transform:none!important}"}
           </style>
         </noscript>
+        <StructuredData nonce={nonce} />
       </head>
       <body className="min-h-dvh">
         <a

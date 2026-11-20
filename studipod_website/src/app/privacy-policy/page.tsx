@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { LegalPage, PlaceholderNotice } from "@/components/layout/legal-page";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy — StudiPod",
+  title: "Privacy Policy",
   description: "StudiPod Privacy Policy.",
   robots: { index: false, follow: true },
   alternates: { canonical: "/privacy-policy" },

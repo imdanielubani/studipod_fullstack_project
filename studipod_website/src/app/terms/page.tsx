@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { LegalPage, PlaceholderNotice } from "@/components/layout/legal-page";
 
 export const metadata: Metadata = {
-  title: "Terms of Use — StudiPod",
+  title: "Terms of Use",
   description: "StudiPod Terms of Use.",
   robots: { index: false, follow: true },
   alternates: { canonical: "/terms" },
