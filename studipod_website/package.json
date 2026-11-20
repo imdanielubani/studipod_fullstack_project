@@ -4,7 +4,7 @@
   "private": true,
   "description": "StudiPod — peer-to-peer collaborative learning and exam preparation platform. Landing page and early-access waitlist.",
   "engines": {
-    "node": ">=20.9.0"
+    "node": ">=22.12.0"
   },
   "scripts": {
     "dev": "next dev",
