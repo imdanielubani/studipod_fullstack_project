@@ -35,7 +35,14 @@ export async function POST(request: Request) {
   }
 
   try {
-    await registerForWaitlist(parsed.data);
+    const result = await registerForWaitlist(parsed.data);
+    if (result.status === "duplicate") {
+      return errorResponse(
+        "ALREADY_REGISTERED",
+        "This email address is already on the waitlist.",
+        409,
+      );
+    }
     return successResponse("You're on the waitlist.", 201);
   } catch (error) {
     logger.error("waitlist.registration_failed", describeError(error));
