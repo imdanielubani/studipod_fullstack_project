@@ -5,12 +5,16 @@ interface EyebrowProps {
   children: ReactNode;
   tone?: "light" | "dark";
   className?: string;
+  /** Render as a heading when the label is the section's accessible title. */
+  as?: "p" | "h2";
+  id?: string;
 }
 
 /** Small uppercase label with a coral marker, placed above section headings. */
-export function Eyebrow({ children, tone = "light", className }: EyebrowProps) {
+export function Eyebrow({ children, tone = "light", className, as: Tag = "p", id }: EyebrowProps) {
   return (
-    <p
+    <Tag
+      id={id}
       className={cn(
         "inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-eyebrow font-semibold uppercase",
         tone === "light"
@@ -21,7 +25,7 @@ export function Eyebrow({ children, tone = "light", className }: EyebrowProps) {
     >
       <span aria-hidden="true" className="size-1.5 rounded-full bg-accent-400" />
       {children}
-    </p>
+    </Tag>
   );
 }
 
