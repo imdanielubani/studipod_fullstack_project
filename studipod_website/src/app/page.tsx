@@ -1,3 +1,4 @@
+import { Footer } from "@/components/layout/footer";
 import { Navbar } from "@/components/layout/navbar";
 import { BigIdeaSection } from "@/components/sections/big-idea-section";
 import { HeroSection } from "@/components/sections/hero-section";
@@ -12,6 +13,7 @@ export default function HomePage() {
         <BigIdeaSection />
         <PodExperienceSection />
       </main>
+      <Footer />
     </>
   );
 }
