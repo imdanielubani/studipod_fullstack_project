@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Instrument_Serif, Inter_Tight } from "next/font/google";
+import { headers } from "next/headers";
 import type { ReactNode } from "react";
 import { MotionProvider } from "@/components/animations/motion-provider";
 import { siteConfig } from "@/config/site";
@@ -30,13 +31,19 @@ export const viewport: Viewport = {
   colorScheme: "light",
 };
 
-export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
+export default async function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
+  // Per-request CSP nonce set by src/proxy.ts. Reading request headers also opts
+  // pages into dynamic rendering, which nonce-based CSP requires.
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
+
   return (
     <html lang="en-GB" className={`${interTight.variable} ${instrumentSerif.variable}`}>
       <head>
         {/* Without JavaScript, scroll-reveal content must still be visible. */}
         <noscript>
-          <style>{"[data-reveal]{opacity:1!important;transform:none!important}"}</style>
+          <style nonce={nonce}>
+            {"[data-reveal]{opacity:1!important;transform:none!important}"}
+          </style>
         </noscript>
       </head>
       <body className="min-h-dvh">
