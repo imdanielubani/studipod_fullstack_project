@@ -48,7 +48,7 @@ export function Footer() {
 
           <nav
             aria-label="Footer"
-            className="grid grid-cols-2 gap-10 sm:gap-16 lg:col-span-6 lg:justify-self-end"
+            className="grid grid-cols-1 gap-10 xs:grid-cols-2 sm:gap-16 lg:col-span-6 lg:justify-self-end"
           >
             <div>
               <h3 className="text-eyebrow font-semibold text-ink uppercase">Explore</h3>

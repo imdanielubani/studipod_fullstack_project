@@ -9,7 +9,7 @@ interface FooterLinkProps {
 }
 
 const linkClasses =
-  "group/link inline-flex items-center gap-2.5 rounded-sm text-[0.9375rem] text-ink-muted transition-colors duration-(--duration-base) hover:text-ink";
+  "group/link inline-flex items-center gap-2.5 whitespace-nowrap rounded-sm text-[0.9375rem] text-ink-muted transition-colors duration-(--duration-base) hover:text-ink";
 
 function isExternal(href: string): boolean {
   return /^https?:\/\//.test(href);
@@ -18,7 +18,7 @@ function isExternal(href: string): boolean {
 export function FooterLink({ href, children, icon }: FooterLinkProps) {
   if (!href) {
     return (
-      <span className="inline-flex items-center gap-2.5 text-[0.9375rem] text-ink-subtle">
+      <span className="inline-flex items-center gap-2.5 text-[0.9375rem] whitespace-nowrap text-ink-subtle">
         {icon}
         {children}
         <span className="rounded-full bg-brand-950/[0.05] px-2 py-0.5 text-[10px] font-semibold tracking-wide text-ink-subtle uppercase">

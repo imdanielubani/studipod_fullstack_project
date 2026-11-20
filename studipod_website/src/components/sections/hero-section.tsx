@@ -34,7 +34,9 @@ export function HeroSection() {
 
       <Container size="wide">
         <div className="animate-rise" style={delay(0)}>
-          <Eyebrow>Early access · Rolling invitations</Eyebrow>
+          <Eyebrow>
+            Early access<span className="hidden xs:inline">&nbsp;· Rolling invitations</span>
+          </Eyebrow>
         </div>
 
         <h1
