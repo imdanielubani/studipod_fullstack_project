@@ -33,6 +33,12 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   return (
     <html lang="en-GB" className={`${interTight.variable} ${instrumentSerif.variable}`}>
+      <head>
+        {/* Without JavaScript, scroll-reveal content must still be visible. */}
+        <noscript>
+          <style>{"[data-reveal]{opacity:1!important;transform:none!important}"}</style>
+        </noscript>
+      </head>
       <body className="min-h-dvh">
         <a
           href="#main-content"

@@ -1,3 +1,5 @@
+import { FadeIn } from "@/components/animations/fade-in";
+import { Reveal, RevealGroup, RevealItem } from "@/components/animations/reveal";
 import { FeatureCard } from "@/components/features/feature-card";
 import { Container } from "@/components/ui/container";
 import { Eyebrow } from "@/components/ui/section-heading";
@@ -32,26 +34,32 @@ export function PodExperienceSection() {
       <Container size="wide">
         <div className="grid gap-8 lg:grid-cols-12 lg:items-end">
           <div className="lg:col-span-8">
-            <Eyebrow as="h2" id="pod-experience-heading">
-              The Pod Experience
-            </Eyebrow>
-            <p className="mt-8 text-headline font-semibold text-ink">
+            <FadeIn>
+              <Eyebrow as="h2" id="pod-experience-heading">
+                The Pod Experience
+              </Eyebrow>
+            </FadeIn>
+            <Reveal as="p" className="mt-8 text-headline font-semibold text-ink">
               Everything you need for a more{" "}
               <span className="font-serif font-normal tracking-[-0.02em] text-brand-600 italic">
                 collaborative
               </span>{" "}
               study experience.
-            </p>
+            </Reveal>
           </div>
         </div>
 
-        <ul className="mt-14 grid gap-4 md:mt-20 md:grid-cols-2 lg:grid-cols-12 lg:gap-5">
+        <RevealGroup
+          as="ul"
+          stagger={0.09}
+          className="mt-14 grid gap-4 md:mt-20 md:grid-cols-2 lg:grid-cols-12 lg:gap-5"
+        >
           {features.map((feature, index) => (
-            <li key={feature.id} className={cn("flex", layout[index])}>
+            <RevealItem as="li" key={feature.id} className={cn("flex", layout[index])}>
               <FeatureCard feature={feature} index={index} isProminent={index < 2} />
-            </li>
+            </RevealItem>
           ))}
-        </ul>
+        </RevealGroup>
       </Container>
     </section>
   );
