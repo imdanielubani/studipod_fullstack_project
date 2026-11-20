@@ -3,6 +3,7 @@ import { errorResponse, successResponse } from "@/lib/api/response";
 import { HONEYPOT_FIELD, WAITLIST_MAX_BODY_BYTES } from "@/lib/constants";
 import { getServerEnv } from "@/lib/env";
 import { describeError, logger } from "@/lib/logger";
+import { allowedOriginsFor, isAllowedOrigin } from "@/lib/security/origin";
 import { getClientIp, getWaitlistRateLimiter, hashIdentifier } from "@/lib/security/rate-limit";
 import { isTurnstileEnabled, verifyTurnstileToken } from "@/lib/security/turnstile";
 import { parseWaitlistRequest } from "@/lib/validations/waitlist.schema";
@@ -12,8 +13,12 @@ import { registerForWaitlist } from "@/lib/waitlist/service";
  * POST /api/waitlist — early-access registration.
  * Only POST is exported; Next.js answers any other method with 405.
  *
- * Order of checks (cheapest first): content type → rate limit → body size →
- * validation → honeypot → Turnstile → persistence.
+ * Order of checks (cheapest first): same-origin → content type → rate limit →
+ * body size → validation → honeypot → Turnstile → persistence.
+ *
+ * Everything runs inside one try block so that any unexpected failure —
+ * including invalid server configuration — still returns the generic JSON
+ * error envelope and never exposes internals.
  */
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -32,11 +37,17 @@ function expectedTurnstileHostname(): string | undefined {
 }
 
 export async function POST(request: Request) {
-  if (!isJsonContentType(request.headers.get("content-type"))) {
-    return errorResponse("UNSUPPORTED_MEDIA_TYPE", "Requests must be sent as JSON.", 415);
-  }
-
   try {
+    const siteUrl = getServerEnv().NEXT_PUBLIC_SITE_URL;
+    if (!isAllowedOrigin(request, allowedOriginsFor(request, siteUrl))) {
+      logger.warn("waitlist.cross_site_request_blocked");
+      return errorResponse("FORBIDDEN", "This request is not allowed.", 403);
+    }
+
+    if (!isJsonContentType(request.headers.get("content-type"))) {
+      return errorResponse("UNSUPPORTED_MEDIA_TYPE", "Requests must be sent as JSON.", 415);
+    }
+
     const clientIp = getClientIp(request.headers);
     const rateLimit = await getWaitlistRateLimiter().limit(await hashIdentifier(clientIp));
     if (!rateLimit.success) {
