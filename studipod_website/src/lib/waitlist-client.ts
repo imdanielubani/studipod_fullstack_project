@@ -5,6 +5,10 @@ export interface WaitlistSubmission {
   fullName: string;
   email: string;
   examinationCategory?: string;
+  /** Honeypot field — always empty for real users. */
+  company?: string;
+  /** Cloudflare Turnstile response token (single-use). */
+  turnstileToken?: string;
 }
 
 const NETWORK_ERROR: WaitlistErrorResponse = {

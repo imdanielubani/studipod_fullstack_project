@@ -6,6 +6,9 @@ import { WaitlistForm } from "@/components/waitlist/waitlist-form";
 import { SECTION_IDS } from "@/config/navigation";
 
 export function WaitlistSection() {
+  // Public site key (safe to expose). The secret key is only read in lib/env.ts.
+  const turnstileSiteKey = process.env.CLOUDFLARE_TURNSTILE_SITE_KEY || null;
+
   return (
     <section
       id={SECTION_IDS.waitlist}
@@ -44,7 +47,7 @@ export function WaitlistSection() {
 
             <Reveal delay={0.15} className="lg:col-span-5 lg:col-start-8">
               <div className="rounded-xl bg-surface p-6 shadow-[0_40px_80px_-32px_rgb(0_0_0/0.5)] sm:p-8">
-                <WaitlistForm />
+                <WaitlistForm turnstileSiteKey={turnstileSiteKey} />
               </div>
             </Reveal>
           </div>

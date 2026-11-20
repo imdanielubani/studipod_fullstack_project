@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { WAITLIST_LIMITS } from "@/lib/constants";
+import { HONEYPOT_FIELD, WAITLIST_LIMITS } from "@/lib/constants";
 import { emptyToUndefined, normalizeEmail, normalizeText } from "@/lib/security/sanitize";
 import type { FieldErrors } from "@/types/waitlist";
 
@@ -78,7 +78,14 @@ export type WaitlistFormValues = z.output<typeof waitlistFormSchema>;
  * smuggle extra properties (e.g. `status`, `id`) into persistence — only the
  * explicitly allowed fields are ever read (mass-assignment protection).
  */
-export const waitlistRequestSchema = waitlistFormSchema.strict();
+export const waitlistRequestSchema = waitlistFormSchema
+  .extend({
+    /** Honeypot: hidden from people, so any value indicates an automated client. */
+    [HONEYPOT_FIELD]: z.string().max(RAW_INPUT_MAX).optional(),
+    /** Cloudflare Turnstile response token, verified server-side. */
+    turnstileToken: z.string().max(WAITLIST_LIMITS.turnstileTokenMax).optional(),
+  })
+  .strict();
 
 export type WaitlistRequest = z.output<typeof waitlistRequestSchema>;
 

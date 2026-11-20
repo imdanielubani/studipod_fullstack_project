@@ -6,6 +6,13 @@ import { z } from "zod";
  * (not at import time) so that `next build` and static pages do not require
  * runtime secrets, while any request that needs them fails fast and clearly.
  */
+/** Optional string where an empty value (e.g. `KEY=` in .env) means "not configured". */
+const optionalString = z
+  .string()
+  .trim()
+  .optional()
+  .transform((value) => value || undefined);
+
 const serverEnvSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   DATABASE_URL: z
@@ -14,6 +21,15 @@ const serverEnvSchema = z.object({
     .refine((value) => /^postgres(ql)?:\/\//.test(value), {
       error: "DATABASE_URL must be a PostgreSQL connection string.",
     }),
+  NEXT_PUBLIC_SITE_URL: optionalString,
+  // Distributed rate limiting (required in production; see SECURITY.md).
+  UPSTASH_REDIS_REST_URL: optionalString.refine(
+    (value) => value === undefined || value.startsWith("https://"),
+    { error: "UPSTASH_REDIS_REST_URL must be an https:// URL." },
+  ),
+  UPSTASH_REDIS_REST_TOKEN: optionalString,
+  // Cloudflare Turnstile. The secret key never leaves the server.
+  CLOUDFLARE_TURNSTILE_SECRET_KEY: optionalString,
 });
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>;

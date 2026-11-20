@@ -20,3 +20,9 @@ export const WAITLIST_RATE_LIMIT = {
 export const HONEYPOT_FIELD = "company" as const;
 
 export const WAITLIST_API_PATH = "/api/waitlist" as const;
+
+/** Turnstile action name; the server rejects tokens issued for any other action. */
+export const TURNSTILE_ACTION = "waitlist" as const;
+
+/** Upper bound for the Turnstile verification round-trip. */
+export const TURNSTILE_VERIFY_TIMEOUT_MS = 5000;

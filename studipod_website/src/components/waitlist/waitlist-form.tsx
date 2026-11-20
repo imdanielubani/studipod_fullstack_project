@@ -1,13 +1,15 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Turnstile } from "@marsidev/react-turnstile";
 import { ArrowUp, CircleAlert, LoaderCircle } from "lucide-react";
 import { AnimatePresence, m } from "motion/react";
-import { useState } from "react";
+import { useState, type BaseSyntheticEvent } from "react";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { WaitlistSuccess } from "@/components/waitlist/waitlist-success";
+import { HONEYPOT_FIELD, TURNSTILE_ACTION } from "@/lib/constants";
 import {
   waitlistFormSchema,
   type WaitlistFormInput,
@@ -21,9 +23,17 @@ const FIELD_NAMES = ["fullName", "email", "examinationCategory"] as const;
 
 type Registered = { fullName: string; email: string };
 
-export function WaitlistForm() {
+interface WaitlistFormProps {
+  /** Public Turnstile site key. When absent, the widget is not rendered. */
+  turnstileSiteKey?: string | null;
+}
+
+export function WaitlistForm({ turnstileSiteKey = null }: WaitlistFormProps) {
   const [registered, setRegistered] = useState<Registered | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  /** Changing the key remounts the widget, which issues a fresh single-use token. */
+  const [turnstileKey, setTurnstileKey] = useState(0);
 
   const {
     register,
@@ -44,18 +54,41 @@ export function WaitlistForm() {
     }
   }
 
-  const onSubmit = async (values: WaitlistFormValues) => {
+  /** Turnstile tokens are single-use: request a fresh one after every attempt. */
+  function resetTurnstile() {
+    setTurnstileToken(null);
+    setTurnstileKey((key) => key + 1);
+  }
+
+  /** Reads the honeypot straight from the submitted form (it is not a managed field). */
+  function readHoneypot(event: BaseSyntheticEvent | undefined): string | undefined {
+    const form: unknown = event?.target; // currentTarget is cleared after async validation
+    if (!(form instanceof HTMLFormElement)) return undefined;
+    const field = form.elements.namedItem(HONEYPOT_FIELD);
+    return field instanceof HTMLInputElement && field.value ? field.value : undefined;
+  }
+
+  const onSubmit = async (values: WaitlistFormValues, event?: BaseSyntheticEvent) => {
     setFormError(null);
+    if (turnstileSiteKey && !turnstileToken) {
+      setFormError("We're still verifying your browser. Please try again in a moment.");
+      return;
+    }
+
     const result = await submitWaitlist({
       fullName: values.fullName,
       email: values.email,
       examinationCategory: values.examinationCategory || undefined,
+      [HONEYPOT_FIELD]: readHoneypot(event),
+      turnstileToken: turnstileToken ?? undefined,
     });
 
     if (result.success) {
       setRegistered({ fullName: values.fullName, email: values.email });
       return;
     }
+
+    resetTurnstile();
 
     const { code, message, fieldErrors } = result.error;
     if (code === "ALREADY_REGISTERED") {
@@ -84,7 +117,7 @@ export function WaitlistForm() {
           aria-label="Join the StudiPod waitlist"
           aria-busy={isSubmitting}
           onSubmit={handleSubmit(onSubmit)}
-          className="flex flex-col gap-5"
+          className="relative flex flex-col gap-5"
           exit={{ opacity: 0, scale: 0.98, transition: { duration: 0.25 } }}
         >
           <Input
@@ -116,6 +149,35 @@ export function WaitlistForm() {
             readOnly={isSubmitting}
             {...register("examinationCategory")}
           />
+
+          {/* Honeypot: invisible to people and assistive tech; bots tend to fill it in. */}
+          <div aria-hidden="true" className="absolute -left-[9999px] h-px w-px overflow-hidden">
+            <label htmlFor={`waitlist-${HONEYPOT_FIELD}`}>Company</label>
+            <input
+              id={`waitlist-${HONEYPOT_FIELD}`}
+              name={HONEYPOT_FIELD}
+              type="text"
+              tabIndex={-1}
+              autoComplete="off"
+              defaultValue=""
+            />
+          </div>
+
+          {turnstileSiteKey ? (
+            <Turnstile
+              key={turnstileKey}
+              siteKey={turnstileSiteKey}
+              options={{
+                action: TURNSTILE_ACTION,
+                appearance: "interaction-only",
+                size: "flexible",
+                theme: "light",
+              }}
+              onSuccess={setTurnstileToken}
+              onExpire={() => setTurnstileToken(null)}
+              onError={() => setTurnstileToken(null)}
+            />
+          ) : null}
 
           <div aria-live="assertive" className="empty:-mt-5">
             {formError ? (
