@@ -1,0 +1,23 @@
+# Local development database only. These credentials are NOT secrets and must
+# never be used for staging or production. Start with: npm run db:up
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: studipod-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: studipod
+      POSTGRES_PASSWORD: studipod_local_dev
+      POSTGRES_DB: studipod
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - studipod-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U studipod -d studipod"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  studipod-postgres-data:

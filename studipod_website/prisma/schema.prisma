@@ -1,0 +1,12 @@
+// StudiPod database schema.
+// Connection URLs live in prisma.config.ts (CLI) and src/lib/prisma.ts (runtime),
+// both read from environment variables — never from this file.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
