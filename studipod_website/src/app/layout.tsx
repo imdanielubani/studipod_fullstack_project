@@ -23,7 +23,15 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   return (
     <html lang="en-GB" className={interTight.variable}>
-      <body className="min-h-dvh">{children}</body>
+      <body className="min-h-dvh">
+        <a
+          href="#main-content"
+          className="fixed top-3 left-3 z-[100] -translate-y-20 rounded-full bg-brand-950 px-4 py-2 text-sm font-medium text-white transition-transform focus:translate-y-0"
+        >
+          Skip to content
+        </a>
+        {children}
+      </body>
     </html>
   );
 }
