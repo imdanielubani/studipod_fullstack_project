@@ -4,6 +4,13 @@ import { Redis } from "@upstash/redis";
 import { WAITLIST_RATE_LIMIT } from "@/lib/constants";
 import { getServerEnv } from "@/lib/env";
 import { describeError, logger } from "@/lib/logger";
+import {
+  createNodeRedisScriptClient,
+  createRedisRateLimiter,
+} from "@/lib/security/redis-rate-limit";
+
+/** Key prefix shared by the Redis and Upstash limiters. */
+export const RATE_LIMIT_PREFIX = "studipod:ratelimit:waitlist";
 
 export interface RateLimitResult {
   success: boolean;
@@ -71,7 +78,7 @@ function createUpstashRateLimiter(url: string, token: string): RateLimiter {
       WAITLIST_RATE_LIMIT.requests,
       `${WAITLIST_RATE_LIMIT.windowSeconds} s`,
     ),
-    prefix: "studipod:ratelimit:waitlist",
+    prefix: RATE_LIMIT_PREFIX,
     analytics: false,
   });
 
@@ -104,17 +111,31 @@ function withFallback(primary: RateLimiter, fallback: RateLimiter): RateLimiter 
 
 let waitlistLimiter: RateLimiter | null = null;
 
-/** Rate limiter for waitlist submissions: Upstash Redis when configured, memory otherwise. */
+/**
+ * Rate limiter for waitlist submissions, in order of preference:
+ *   1. REDIS_URL — a standard Redis server (e.g. self-hosted on the same VPS)
+ *   2. UPSTASH_REDIS_REST_URL + TOKEN — Upstash over HTTPS (serverless hosts)
+ *   3. in-memory — local development only
+ * Distributed stores fall back to memory if they error, so an outage never
+ * blocks sign-ups.
+ */
 export function getWaitlistRateLimiter(): RateLimiter {
   if (waitlistLimiter) return waitlistLimiter;
 
   const env = getServerEnv();
-  const memory = createMemoryRateLimiter({
-    requests: WAITLIST_RATE_LIMIT.requests,
-    windowMs: WAITLIST_RATE_LIMIT.windowSeconds * 1000,
-  });
+  const windowMs = WAITLIST_RATE_LIMIT.windowSeconds * 1000;
+  const memory = createMemoryRateLimiter({ requests: WAITLIST_RATE_LIMIT.requests, windowMs });
 
-  if (env.UPSTASH_REDIS_REST_URL && env.UPSTASH_REDIS_REST_TOKEN) {
+  if (env.REDIS_URL) {
+    waitlistLimiter = withFallback(
+      createRedisRateLimiter(createNodeRedisScriptClient(env.REDIS_URL), {
+        requests: WAITLIST_RATE_LIMIT.requests,
+        windowMs,
+        prefix: RATE_LIMIT_PREFIX,
+      }),
+      memory,
+    );
+  } else if (env.UPSTASH_REDIS_REST_URL && env.UPSTASH_REDIS_REST_TOKEN) {
     waitlistLimiter = withFallback(
       createUpstashRateLimiter(env.UPSTASH_REDIS_REST_URL, env.UPSTASH_REDIS_REST_TOKEN),
       memory,
@@ -122,7 +143,7 @@ export function getWaitlistRateLimiter(): RateLimiter {
   } else {
     if (env.NODE_ENV === "production") {
       logger.error("rate_limit.distributed_store_missing", {
-        detail: "Set UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN in production.",
+        detail: "Set REDIS_URL, or UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN.",
       });
     }
     waitlistLimiter = memory;

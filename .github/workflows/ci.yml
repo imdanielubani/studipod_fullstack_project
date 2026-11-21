@@ -91,6 +91,15 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
+      redis:
+        image: redis:7.4-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - uses: actions/checkout@v7
         with:
@@ -105,6 +114,9 @@ jobs:
         run: npx prisma migrate deploy
       - name: Run tests with coverage (80% threshold)
         run: npm run test:coverage
+        env:
+          # Ephemeral CI service container (no password needed on the isolated runner).
+          TEST_REDIS_URL: redis://localhost:6379
       - uses: actions/upload-artifact@v7
         if: always()
         with:

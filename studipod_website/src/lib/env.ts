@@ -28,6 +28,11 @@ const serverEnvSchema = z.object({
     { error: "UPSTASH_REDIS_REST_URL must be an https:// URL." },
   ),
   UPSTASH_REDIS_REST_TOKEN: optionalString,
+  // Standard Redis (e.g. self-hosted on a VPS). Takes precedence over Upstash.
+  REDIS_URL: optionalString.refine(
+    (value) => value === undefined || value.startsWith("redis://") || value.startsWith("rediss://"),
+    { error: "REDIS_URL must start with redis:// or rediss://." },
+  ),
   // Cloudflare Turnstile. The secret key never leaves the server.
   CLOUDFLARE_TURNSTILE_SECRET_KEY: optionalString,
 });

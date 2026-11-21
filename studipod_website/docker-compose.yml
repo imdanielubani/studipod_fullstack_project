@@ -1,6 +1,21 @@
-# Local development database only. These credentials are NOT secrets and must
+# Local development services only. These credentials are NOT secrets and must
 # never be used for staging or production. Start with: npm run db:up
 services:
+  redis:
+    image: redis:7.4-alpine
+    container_name: studipod-redis
+    restart: unless-stopped
+    # Password required even locally; rate-limit data is ephemeral, so no persistence.
+    command:
+      ["redis-server", "--requirepass", "studipod_local_dev", "--save", "", "--appendonly", "no"]
+    ports:
+      - "127.0.0.1:6380:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "studipod_local_dev", "--no-auth-warning", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   postgres:
     image: postgres:17-alpine
     container_name: studipod-postgres

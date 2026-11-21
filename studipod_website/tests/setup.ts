@@ -12,6 +12,7 @@ delete process.env.CLOUDFLARE_TURNSTILE_SECRET_KEY;
 delete process.env.CLOUDFLARE_TURNSTILE_SITE_KEY;
 delete process.env.UPSTASH_REDIS_REST_URL;
 delete process.env.UPSTASH_REDIS_REST_TOKEN;
+delete process.env.REDIS_URL;
 
 beforeEach(() => {
   // Keep test output readable; structured server logs are asserted where relevant.
