@@ -145,20 +145,24 @@ limiter is used). Submissions are stored in the local database; inspect them wit
 Copy `.env.example` to `.env`. Never commit `.env`. Anything prefixed `NEXT_PUBLIC_` is visible in
 the browser — never put secrets there.
 
-| Variable                          | Required      | Purpose                                                                         |
-| --------------------------------- | ------------- | ------------------------------------------------------------------------------- |
-| `NEXT_PUBLIC_SITE_URL`            | Production    | Canonical URL for metadata, sitemap, origin and Turnstile host checks           |
-| `DATABASE_URL`                    | Yes           | Runtime PostgreSQL connection (pooled URL is fine)                              |
-| `DIRECT_URL`                      | With a pooler | Direct connection used by `prisma migrate`                                      |
-| `CLOUDFLARE_TURNSTILE_SITE_KEY`   | Production    | Public Turnstile site key (rendered in the page)                                |
-| `CLOUDFLARE_TURNSTILE_SECRET_KEY` | Production    | **Secret**, server-only; enables server-side token verification                 |
-| `REDIS_URL`                       | Production*   | Standard Redis for rate limiting (`redis://` / `rediss://`); preferred on a VPS |
-| `UPSTASH_REDIS_REST_URL`          | Production*   | Distributed rate limiting (HTTPS URL)                                           |
-| `UPSTASH_REDIS_REST_TOKEN`        | Production*   | **Secret**, Upstash REST token                                                  |
-| `NEXT_PUBLIC_INSTAGRAM_URL`       | Optional      | Footer link; shown as "Soon" until set                                          |
-| `NEXT_PUBLIC_LINKEDIN_URL`        | Optional      | Footer link; shown as "Soon" until set                                          |
-| `NEXT_PUBLIC_CONTACT_EMAIL`       | Optional      | Overrides the contact email (default `hello@studipod.com`)                      |
-| `NEXT_PUBLIC_FAQ_URL`             | Optional      | Footer "FAQs" link                                                              |
+| Variable                                                            | Required      | Purpose                                                                         |
+| ------------------------------------------------------------------- | ------------- | ------------------------------------------------------------------------------- |
+| `NEXT_PUBLIC_SITE_URL`                                              | Production    | Canonical URL for metadata, sitemap, origin and Turnstile host checks           |
+| `DATABASE_URL`                                                      | Yes           | Runtime PostgreSQL connection (pooled URL is fine)                              |
+| `DIRECT_URL`                                                        | With a pooler | Direct connection used by `prisma migrate`                                      |
+| `CLOUDFLARE_TURNSTILE_SITE_KEY`                                     | Production    | Public Turnstile site key (rendered in the page)                                |
+| `CLOUDFLARE_TURNSTILE_SECRET_KEY`                                   | Production    | **Secret**, server-only; enables server-side token verification                 |
+| `REDIS_URL`                                                         | Production*   | Standard Redis for rate limiting (`redis://` / `rediss://`); preferred on a VPS |
+| `UPSTASH_REDIS_REST_URL`                                            | Production*   | Distributed rate limiting (HTTPS URL)                                           |
+| `UPSTASH_REDIS_REST_TOKEN`                                          | Production*   | **Secret**, Upstash REST token                                                  |
+| `NEXT_PUBLIC_INSTAGRAM_URL`                                         | Optional      | Footer link; shown as "Soon" until set                                          |
+| `NEXT_PUBLIC_LINKEDIN_URL`                                          | Optional      | Footer link; shown as "Soon" until set                                          |
+| `NEXT_PUBLIC_CONTACT_EMAIL`                                         | Optional      | Overrides the contact email (default `hello@studipod.com`)                      |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM` | Optional      | Daily digest email via SMTP (e.g. Hostinger mailbox)                            |
+| `WAITLIST_DIGEST_TO`                                                | Optional      | Digest recipient (default `hello@studipod.com`)                                 |
+| `CRON_SECRET`                                                       | With digest   | **Secret** (32+ chars) required to trigger the digest                           |
+| `DIGEST_DATABASE_URL`                                               | With digest   | **Secret**, read-only reporting role for the digest                             |
+| `NEXT_PUBLIC_FAQ_URL`                                               | Optional      | Footer "FAQs" link                                                              |
 
 - Production needs **one** rate-limit store: `REDIS_URL` **or** the two Upstash variables. If both
   are set, `REDIS_URL` is used.
@@ -222,6 +226,33 @@ If the configured store is unreachable, the app falls back to its in-memory limi
 warning) so sign-ups keep working. With no store configured, an in-memory limiter is used: fine
 locally but **not** in production, because serverless and multi-instance deployments do not share
 memory. A production deployment without a store logs an error.
+
+## Daily waitlist digest email
+
+Once a day the site can email `hello@studipod.com` a digest of everyone who joined the waitlist
+since the previous digest: the new sign-ups (name, email, category, time), the running total and a
+CSV attachment. Days without new sign-ups send nothing.
+
+- **Sending:** SMTP — e.g. the Hostinger mailbox (`smtp.hostinger.com`, port 465). Configure
+  `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM` and optionally
+  `WAITLIST_DIGEST_TO`.
+- **Trigger:** a scheduler calls `POST` (or `GET`) `/api/internal/waitlist-digest` with
+  `Authorization: Bearer <CRON_SECRET>`. On Vercel, `vercel.json` schedules it daily at 07:00
+  UTC; on a VPS use a Dokploy schedule or cron (see the deployment guides). Without `CRON_SECRET`
+  the endpoint is disabled.
+- **Reliability:** each successful send is recorded in `waitlist_digest_runs`. If sending fails,
+  nothing is recorded and the next digest includes those people. The period ends one minute before
+  the database time, so sign-ups that are still being saved are never skipped.
+- **Least privilege:** in production set `DIGEST_DATABASE_URL` to the read-only
+  `studipod_reporter` role from `prisma/sql/least-privilege-role.sql`.
+
+Trigger it manually to test:
+
+```bash
+curl -X POST -H "Authorization: Bearer $CRON_SECRET" https://studipod.com/api/internal/waitlist-digest
+```
+
+The response data is `{"status":"sent",…}` or `{"status":"skipped","reason":"no-new-entries"}`.
 
 ## Testing
 

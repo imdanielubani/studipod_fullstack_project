@@ -80,6 +80,19 @@ Only the waitlist endpoint accepts input. There are no user accounts, sessions o
 - Hidden honeypot field; filled submissions receive a success-looking response and are discarded.
 - Rate limiting and duplicate protection (below).
 
+### Waitlist digest email
+
+- `/api/internal/waitlist-digest` is disabled unless `CRON_SECRET` (32+ characters) is set, and
+  it requires `Authorization: Bearer <CRON_SECRET>`, compared in constant time; other requests get
+  a generic 401.
+- SMTP always uses TLS (implicit TLS on 465, mandatory STARTTLS otherwise) with timeouts.
+- Visitor-supplied values are HTML-escaped in the email and protected against CSV formula injection
+  in the attachment.
+- The digest reads through a separate read-only `studipod_reporter` database role; the website's
+  runtime role still cannot read registrations.
+- The digest contains personal data: protect the recipient mailbox with a strong password and
+  two-factor authentication, and delete old digests when they are no longer needed.
+
 ### Database security
 
 - Prisma ORM with parameterised queries (no string-built SQL).

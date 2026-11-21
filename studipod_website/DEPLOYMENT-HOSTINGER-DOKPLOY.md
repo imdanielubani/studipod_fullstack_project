@@ -26,6 +26,7 @@ Expected time: about 45–60 minutes for a first deployment.
 10. [Database migrations](#10-database-migrations)
 11. [Deploy and attach the domain](#11-deploy-and-attach-the-domain)
 12. [Create the least-privilege database role](#12-create-the-least-privilege-database-role)
+    - [12b. Daily waitlist digest email](#12b-daily-waitlist-digest-email-hostinger-mailbox)
 13. [Verify the deployment](#13-verify-the-deployment)
 14. [Backups, updates and rollbacks](#14-backups-updates-and-rollbacks)
 15. [Troubleshooting](#15-troubleshooting)
@@ -390,6 +391,63 @@ read names or emails, update, delete or change the schema (see
 
 ---
 
+## 12b. Daily waitlist digest email (Hostinger mailbox)
+
+Every morning the site can email `hello@studipod.com` the people who joined since the previous
+digest, with the running total and a CSV attachment. Quiet days send nothing.
+
+**1. Mailbox.** In hPanel → **Emails**, make sure `hello@studipod.com` exists (or create a
+dedicated sender such as `no-reply@studipod.com`). If the domain's DNS is not managed by
+Hostinger, add the **SPF, DKIM and DMARC** records shown in hPanel → Emails → DNS so the digest
+is not marked as spam.
+
+**2. Reporting database login.** The website's `studipod_app` login cannot read registrations, so
+the digest uses its own read-only login. The second half of
+[`prisma/sql/least-privilege-role.sql`](./prisma/sql/least-privilege-role.sql) creates
+`studipod_reporter` — run it as in §12 with a **different** long random password.
+
+**3. Environment variables** (`studipod-web` → **Environment**), then **Redeploy**:
+
+```dotenv
+SMTP_HOST=smtp.hostinger.com
+SMTP_PORT=465
+SMTP_USER=hello@studipod.com
+SMTP_PASSWORD=<mailbox password>
+SMTP_FROM=StudiPod Waitlist <hello@studipod.com>
+WAITLIST_DIGEST_TO=hello@studipod.com
+CRON_SECRET=<long random value, 32+ characters>
+DIGEST_DATABASE_URL=postgresql://studipod_reporter:<reporter-password>@<internal-host>:5432/studipod?schema=public
+```
+
+`SMTP_FROM` must use the same mailbox as `SMTP_USER` (Hostinger rejects other senders).
+Generate `CRON_SECRET` with `openssl rand -hex 32`.
+
+**4. Schedule it daily.** Choose one:
+
+- **Dokploy schedule (recommended):** `studipod-web` → **Schedules** → **Add schedule**, cron
+  expression `0 7 * * *` (07:00 UTC), and this command, which runs inside the app container:
+
+  ```bash
+  node -e "fetch('http://127.0.0.1:3000/api/internal/waitlist-digest',{method:'POST',headers:{Authorization:'Bearer '+process.env.CRON_SECRET}}).then(async r=>{console.log(r.status,await r.text());if(!r.ok)process.exit(1)})"
+  ```
+
+- **Server cron (alternative):** put the secret in a root-only file and call the public URL:
+
+  ```bash
+  echo 'CRON_SECRET=<same value>' > /root/.studipod-cron && chmod 600 /root/.studipod-cron
+  (crontab -l 2>/dev/null; echo '0 7 * * * . /root/.studipod-cron && curl -fsS -X POST -H "Authorization: Bearer $CRON_SECRET" https://studipod.com/api/internal/waitlist-digest > /dev/null') | crontab -
+  ```
+
+**5. Test it now** (from your computer, with the real secret):
+
+```bash
+curl -X POST -H "Authorization: Bearer <CRON_SECRET>" https://studipod.com/api/internal/waitlist-digest
+```
+
+`"status":"sent"` means the email was accepted by Hostinger; `"status":"skipped"` means there
+were no new sign-ups since the last digest. Responses `401` = wrong secret, `503` = a setting is
+missing, `500` = see the app logs (`waitlist_digest.failed`).
+
 ## 13. Verify the deployment
 
 **Headers and SEO files** (from your computer):
@@ -495,6 +553,9 @@ docker exec -it <redis-container-name> redis-cli -a '<redis-password>' --no-auth
 | Every submission fails with "We couldn't verify that you're human"                   | Turnstile hostname mismatch or wrong keys: the domain must be in the widget's hostnames, `NEXT_PUBLIC_SITE_URL` must match the domain people use, and both keys must belong to the same widget. Redeploy after changing the site key. |
 | Submissions fail with "We couldn't verify your request right now" (503)              | The server cannot reach `challenges.cloudflare.com` (outbound firewall/DNS) or the secret key is invalid. Check the app logs (`turnstile.siteverify_*`).                                                                              |
 | Logs show `rate_limit.redis_connection_error` / `rate_limit.store_unavailable`       | The app cannot reach Redis (wrong `<redis-internal-host>` or password, or the Redis service is stopped). Sign-ups keep working on the per-instance in-memory fallback, but fix `REDIS_URL` (§6.2, §9) and redeploy.                   |
+| Digest returns 500; logs show `waitlist_digest.failed` with `EAUTH`                  | Wrong SMTP username/password, or `SMTP_FROM` is not the same mailbox as `SMTP_USER`. Check the mailbox credentials in hPanel → Emails.                                                                                                |
+| Digest returns 500 with `permission denied`                                          | `DIGEST_DATABASE_URL` is missing (so the insert-only `studipod_app` login was used) or the reporter grants were not applied — see §12b step 2.                                                                                        |
+| Digest emails arrive in spam                                                         | SPF/DKIM/DMARC records for studipod.com are missing — add the records shown in hPanel → Emails → DNS.                                                                                                                                 |
 | Many different visitors get "Too many attempts" together                             | All requests appear to come from one IP — typically the Cloudflare proxy (orange cloud) is on. Switch the DNS records to **DNS only** (§5) or configure Traefik to trust Cloudflare's IP ranges.                                      |
 | Certificate not issued / browser shows "not secure"                                  | DNS does not point at the VPS yet, ports 80/443 are closed in the Hostinger firewall, or the Cloudflare proxy is on. Fix, then re-save the domain in Dokploy.                                                                         |
 | Social previews or canonical URLs show `localhost`                                   | `NEXT_PUBLIC_SITE_URL` was missing at build time — set it and **redeploy**.                                                                                                                                                           |

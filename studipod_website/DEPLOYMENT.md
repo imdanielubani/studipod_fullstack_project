@@ -146,6 +146,15 @@ Rules:
 
 ---
 
+### 4.1 Daily waitlist digest (optional)
+
+To email `hello@studipod.com` the new sign-ups each day, also add `SMTP_HOST`, `SMTP_PORT`,
+`SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM`, `CRON_SECRET` (32+ random characters) and
+`DIGEST_DATABASE_URL` (the read-only `studipod_reporter` role from
+`prisma/sql/least-privilege-role.sql`). The project's `vercel.json` already registers a Vercel
+Cron Job that calls `/api/internal/waitlist-digest` daily at 07:00 UTC; Vercel sends
+`CRON_SECRET` automatically as the bearer token. Check runs under **Settings → Cron Jobs**.
+
 ## 5. Run the database migrations
 
 Migrations create the `waitlist_entries` table, its indexes and integrity constraints. Run them
