@@ -131,7 +131,7 @@ values cannot be read back in the dashboard.
 | `UPSTASH_REDIS_REST_TOKEN`        | Upstash REST token                                             | **Yes**   |
 | `NEXT_PUBLIC_INSTAGRAM_URL`       | Optional — e.g. `https://www.instagram.com/<handle>`           | No        |
 | `NEXT_PUBLIC_LINKEDIN_URL`        | Optional — e.g. `https://www.linkedin.com/company/<page>`      | No        |
-| `NEXT_PUBLIC_CONTACT_EMAIL`       | Optional — contact address for the footer                      | No        |
+| `NEXT_PUBLIC_CONTACT_EMAIL`       | Optional — overrides the default `hello@studipod.com`          | No        |
 | `NEXT_PUBLIC_FAQ_URL`             | Optional — FAQ page URL                                        | No        |
 
 Rules:

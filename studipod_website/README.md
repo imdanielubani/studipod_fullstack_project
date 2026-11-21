@@ -157,7 +157,7 @@ the browser — never put secrets there.
 | `UPSTASH_REDIS_REST_TOKEN`        | Production*   | **Secret**, Upstash REST token                                                  |
 | `NEXT_PUBLIC_INSTAGRAM_URL`       | Optional      | Footer link; shown as "Soon" until set                                          |
 | `NEXT_PUBLIC_LINKEDIN_URL`        | Optional      | Footer link; shown as "Soon" until set                                          |
-| `NEXT_PUBLIC_CONTACT_EMAIL`       | Optional      | Footer "Contact" / "Contact Us" mailto link                                     |
+| `NEXT_PUBLIC_CONTACT_EMAIL`       | Optional      | Overrides the contact email (default `hello@studipod.com`)                      |
 | `NEXT_PUBLIC_FAQ_URL`             | Optional      | Footer "FAQs" link                                                              |
 
 - Production needs **one** rate-limit store: `REDIS_URL` **or** the two Upstash variables. If both

@@ -66,8 +66,13 @@ describe("site config", () => {
     expect(links.faq).toBeNull();
   });
 
-  it("rejects malformed contact emails", async () => {
+  it("uses hello@studipod.com as the default contact email", async () => {
+    vi.stubEnv("NEXT_PUBLIC_CONTACT_EMAIL", "");
+    expect((await loadSiteConfig()).links.contactEmail).toBe("hello@studipod.com");
+  });
+
+  it("ignores malformed contact emails and keeps the default", async () => {
     vi.stubEnv("NEXT_PUBLIC_CONTACT_EMAIL", "not-an-email");
-    expect((await loadSiteConfig()).links.contactEmail).toBeNull();
+    expect((await loadSiteConfig()).links.contactEmail).toBe("hello@studipod.com");
   });
 });

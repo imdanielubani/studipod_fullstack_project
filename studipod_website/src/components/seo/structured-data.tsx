@@ -21,6 +21,13 @@ export function StructuredData({ nonce }: { nonce?: string }) {
         url: siteConfig.url,
         logo: `${siteConfig.url}/logo/studipod-logo.png`,
         slogan: siteConfig.tagline,
+        email: siteConfig.links.contactEmail,
+        contactPoint: {
+          "@type": "ContactPoint",
+          contactType: "customer support",
+          email: siteConfig.links.contactEmail,
+          availableLanguage: "en-GB",
+        },
         ...(sameAs.length > 0 ? { sameAs } : {}),
       },
       {
