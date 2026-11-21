@@ -13,8 +13,8 @@ export function BigIdeaSection() {
       className="relative bg-surface py-24 md:py-36"
     >
       <Container size="wide">
-        <div className="grid gap-16 lg:grid-cols-12 lg:items-center lg:gap-10">
-          <div className="lg:col-span-7">
+        <div className="grid gap-14 md:gap-20">
+          <div className="max-w-4xl">
             <FadeIn>
               <Eyebrow as="h2" id="big-idea-heading">
                 The Big Idea
@@ -39,13 +39,13 @@ export function BigIdeaSection() {
             </Reveal>
           </div>
 
-          <Reveal delay={0.15} className="lg:col-span-5">
-            <div className="relative grid place-items-center overflow-hidden rounded-2xl bg-soft px-6 py-12 sm:px-10 sm:py-14">
+          <Reveal delay={0.15}>
+            <div className="relative overflow-hidden rounded-2xl bg-soft p-4 sm:p-6 lg:p-8">
               <div
                 aria-hidden="true"
                 className="absolute inset-0 bg-dot-grid mask-radial opacity-70"
               />
-              <div className="relative w-full max-w-xs sm:max-w-sm">
+              <div className="relative">
                 <BigIdeaVisual />
               </div>
             </div>
