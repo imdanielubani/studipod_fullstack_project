@@ -1,349 +1,345 @@
-# Deploying StudiPod to a Hostinger VPS with Dokploy
+# Deploying StudiPod to a Hostinger VPS with Dokploy — Step by Step
 
-Step-by-step guide for self-hosting the StudiPod website and waitlist on a
-[Hostinger VPS](https://www.hostinger.com/vps-hosting) running the
-[Dokploy](https://dokploy.com) panel. Dokploy builds the app from GitHub, runs it in Docker behind
-Traefik, issues Let's Encrypt certificates and hosts the PostgreSQL database on the same server.
+This guide takes you from an empty Hostinger VPS to the live StudiPod website at
+`https://studipod.com`, with:
 
-Expected time: about 45–60 minutes for a first deployment.
+- the website and waitlist (Next.js) built automatically from GitHub,
+- PostgreSQL (the waitlist database) and Redis (rate limiting) on the same server,
+- free HTTPS certificates,
+- Cloudflare Turnstile bot protection,
+- a daily email of new sign-ups to `hello@studipod.com`,
+- backups.
 
-> Dokploy's interface changes between versions. Menu names below match recent releases; if a label
-> differs slightly on your panel, look for the equivalent setting in the same area.
+Follow the steps **in order** — later steps depend on earlier ones. Each step ends with a
+**✅ Check** so you know it worked before moving on.
 
----
+**Time needed:** about 1–1½ hours the first time.
 
-## Contents
-
-1. [Architecture](#1-architecture)
-2. [What you need](#2-what-you-need)
-3. [Prepare the Hostinger VPS](#3-prepare-the-hostinger-vps)
-4. [Secure the server and the Dokploy panel](#4-secure-the-server-and-the-dokploy-panel)
-5. [Point your domain at the VPS](#5-point-your-domain-at-the-vps)
-6. [Create the project, PostgreSQL and Redis](#6-create-the-project-postgresql-and-redis)
-7. [Create the external services (Turnstile, optional Upstash)](#7-create-the-external-services-turnstile-optional-upstash)
-8. [Create the application](#8-create-the-application)
-9. [Configure environment variables](#9-configure-environment-variables)
-10. [Database migrations](#10-database-migrations)
-11. [Deploy and attach the domain](#11-deploy-and-attach-the-domain)
-12. [Create the least-privilege database role](#12-create-the-least-privilege-database-role)
-    - [12b. Daily waitlist digest email](#12b-daily-waitlist-digest-email-hostinger-mailbox)
-13. [Verify the deployment](#13-verify-the-deployment)
-14. [Backups, updates and rollbacks](#14-backups-updates-and-rollbacks)
-15. [Troubleshooting](#15-troubleshooting)
-16. [Appendix: Dockerfile build option](#appendix-dockerfile-build-option)
+> Dokploy's screens change a little between versions. If a button name differs, look for the
+> equivalent option in the same area of the screen.
 
 ---
 
-## 1. Architecture
+## Overview
+
+| Part                                                            | Steps |
+| --------------------------------------------------------------- | ----- |
+| [A. Before you start](#part-a--before-you-start)                | 0     |
+| [B. Prepare the server](#part-b--prepare-the-server)            | 1–6   |
+| [C. Create the services](#part-c--create-the-services)          | 7–11  |
+| [D. Deploy the website](#part-d--deploy-the-website)            | 12–15 |
+| [E. Harden and automate](#part-e--harden-and-automate)          | 16–19 |
+| [F. Final checks](#part-f--final-checks)                        | 20    |
+| [Updating, rollbacks and troubleshooting](#updating-the-site)   | —     |
+| [Appendix: Dockerfile build](#appendix-dockerfile-build-option) | —     |
 
 ```
 Visitor ──HTTPS──▶ Hostinger VPS
-                    ├─ Traefik (managed by Dokploy) — TLS (Let's Encrypt), ports 80/443
-                    │    └─▶ StudiPod app container (Next.js, port 3000)
-                    │            ├─▶ PostgreSQL container (internal Docker network only)
-                    │            └─▶ Redis container — rate limiting (internal network only)
-                    └─ Dokploy panel (admin only)
+                    ├─ Traefik (Dokploy) — HTTPS certificates, ports 80/443
+                    │    └─▶ StudiPod website container (port 3000)
+                    │            ├─▶ PostgreSQL container  (private network only)
+                    │            └─▶ Redis container       (private network only)
+                    └─ Dokploy panel (https://panel.studipod.com, admin only)
 
-App ──HTTPS──▶ Cloudflare Turnstile (bot verification)
-```
-
-PostgreSQL and Redis are **never** exposed to the internet — only the app container can reach
-them.
-
----
-
-## 2. What you need
-
-| Requirement        | Notes                                                                                                                                             |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Hostinger VPS      | **KVM 2 (2 vCPU / 8 GB RAM) recommended.** KVM 1 (4 GB) works if you add swap (§3.3) — the Next.js build needs about 2 GB of memory while it runs |
-| Domain name        | e.g. `studipod.com`, with access to its DNS settings                                                                                              |
-| GitHub access      | to `imdanielubani/studipod_fullstack_project`                                                                                                     |
-| Cloudflare account | Free — for a Turnstile widget (**required in production**)                                                                                        |
-| Redis              | A Redis service in Dokploy on the same VPS (§6.2) — no external account needed. Upstash is an optional alternative (§7.2)                         |
-| SSH client         | Built into Windows Terminal, macOS and Linux                                                                                                      |
-| Password manager   | To generate and store the database and panel passwords                                                                                            |
-
-> **Important:** the Next.js app lives in the `studipod_website/` sub-folder of the repository.
-> Dokploy must be told this (the **Build Path**, §8), otherwise the build will fail.
-
----
-
-## 3. Prepare the Hostinger VPS
-
-### 3.1 Install Dokploy
-
-**New VPS:** during setup, choose the **Dokploy** template (hPanel: _VPS → OS & Panel → Operating
-System → Applications / Panels → Dokploy_). It installs Ubuntu with Docker and Dokploy
-preconfigured.
-
-**Existing VPS:** reinstall it with the Dokploy template from the same menu (this **erases** the
-server), or install Dokploy on a fresh Ubuntu 22.04/24.04 over SSH with the official installer:
-
-```bash
-curl -sSL https://dokploy.com/install.sh | sh
-```
-
-### 3.2 Create the Dokploy admin account — immediately
-
-Open `http://YOUR_VPS_IP:3000` in your browser and **create the admin account straight away** —
-the first person to open this page becomes the administrator. Use a strong, unique password from
-your password manager, and enable two-factor authentication in your Dokploy profile once logged in.
-
-### 3.3 Add swap (recommended on 4 GB plans)
-
-Connect over SSH (`ssh root@YOUR_VPS_IP`) and add 4 GB of swap so builds cannot run out of memory:
-
-```bash
-fallocate -l 4G /swapfile && chmod 600 /swapfile && mkswap /swapfile && swapon /swapfile
-echo '/swapfile none swap sw 0 0' >> /etc/fstab
-free -h   # the Swap line should show 4.0Gi
+Website ──▶ Cloudflare Turnstile (bot checks)
+Website ──▶ smtp.hostinger.com (daily digest email to hello@studipod.com)
 ```
 
 ---
 
-## 4. Secure the server and the Dokploy panel
+## Part A — Before you start
 
-1. **SSH keys instead of passwords.** In hPanel (_VPS → Settings → SSH keys_) add your public key,
-   confirm you can log in with it, then disable password login:
+### Step 0 — Gather accounts and prepare a values worksheet
+
+**You need:**
+
+- [ ] A Hostinger VPS — **KVM 2 (8 GB RAM) recommended**; KVM 1 (4 GB) works with swap (Step 3).
+- [ ] The domain `studipod.com` and access to its DNS settings.
+- [ ] Access to the GitHub repository `imdanielubani/studipod_fullstack_project`.
+- [ ] A free Cloudflare account (for Turnstile).
+- [ ] A Hostinger email plan for `hello@studipod.com`.
+- [ ] A password manager.
+
+**Create a private note in your password manager** and fill it in as you go. Never put these
+values in GitHub, chat messages or screenshots.
+
+```text
+VPS_IP                    =
+DOKPLOY_ADMIN_PASSWORD    =
+POSTGRES_OWNER_PASSWORD   =        (Step 8)
+POSTGRES_INTERNAL_HOST    =        (Step 8)
+REDIS_PASSWORD            =        (Step 9)
+REDIS_INTERNAL_HOST       =        (Step 9)
+TURNSTILE_SITE_KEY        =        (Step 10)
+TURNSTILE_SECRET_KEY      =        (Step 10)
+MAILBOX_PASSWORD          =        (Step 11, hello@studipod.com)
+CRON_SECRET               =        (Step 13)
+APP_DB_PASSWORD           =        (Step 16, studipod_app)
+REPORTER_DB_PASSWORD      =        (Step 16, studipod_reporter)
+```
+
+> **Tip:** for database and Redis passwords use only letters and numbers (e.g. the output of
+> `openssl rand -hex 24`). Symbols such as `@`, `/` or `#` break connection URLs.
+
+---
+
+## Part B — Prepare the server
+
+### Step 1 — Install Dokploy on the VPS
+
+1. Log in to **hPanel** → **VPS** → select your server.
+2. Go to **OS & Panel → Operating System**.
+3. Choose **Applications / Panels → Dokploy** and install it.
+   > Reinstalling the OS **erases** the server. Only do this on a new or empty VPS.
+4. When it finishes, copy the server's **IP address** into `VPS_IP`.
+
+✅ **Check:** `http://VPS_IP:3000` shows the Dokploy sign-up page.
+
+### Step 2 — Create the Dokploy admin account (immediately)
+
+The first person to open the panel becomes its administrator, so do this straight away.
+
+1. Open `http://VPS_IP:3000`.
+2. Register with your email and a strong password (save it as `DOKPLOY_ADMIN_PASSWORD`).
+3. After logging in, open your **profile** and turn on **two-factor authentication**.
+
+✅ **Check:** you can log out and back in with 2FA.
+
+### Step 3 — Secure the server over SSH
+
+1. **Add your SSH key:** hPanel → **VPS → Settings → SSH keys** → add your public key.
+2. Connect: `ssh root@VPS_IP` — it should log in without asking for a password.
+3. Run these commands one block at a time:
 
    ```bash
+   # Turn off password logins (keys only)
    sed -i 's/^#\?PasswordAuthentication .*/PasswordAuthentication no/' /etc/ssh/sshd_config
    systemctl restart ssh
-   ```
 
-2. **Automatic security updates:**
-
-   ```bash
+   # Automatic security updates
    apt update && apt install -y unattended-upgrades
    dpkg-reconfigure -f noninteractive unattended-upgrades
+
+   # 4 GB swap so builds never run out of memory (strongly recommended on 4 GB plans)
+   fallocate -l 4G /swapfile && chmod 600 /swapfile && mkswap /swapfile && swapon /swapfile
+   echo '/swapfile none swap sw 0 0' >> /etc/fstab
    ```
 
-3. **Firewall — use Hostinger's firewall, not only UFW.** Docker publishes container ports directly
-   through iptables, which **bypasses UFW**. In hPanel open _VPS → Security → Firewall_, create a
-   firewall and attach it to the VPS with these inbound rules:
+4. Keep this SSH window open in case you need to undo something, and test a **second** SSH login
+   in a new window before closing it.
 
-   | Port | Protocol | Source                                      | Purpose                    |
-   | ---- | -------- | ------------------------------------------- | -------------------------- |
-   | 22   | TCP      | Your IP address (or anywhere if it changes) | SSH                        |
-   | 80   | TCP      | Anywhere                                    | HTTP → redirected to HTTPS |
-   | 443  | TCP      | Anywhere                                    | HTTPS                      |
-   | 3000 | TCP      | Your IP address — **remove after step 4.4** | Dokploy panel (temporary)  |
+✅ **Check:** `free -h` shows a `Swap` line of about 4.0Gi, and a new SSH session still works.
 
-   Everything else (including PostgreSQL port 5432) stays closed.
+### Step 4 — Turn on Hostinger's firewall
 
-4. **Put the panel behind HTTPS** once DNS is ready (§5): in Dokploy open _Settings → Web Server_
-   (or _Server → Domain_), set the panel domain to e.g. `panel.studipod.com`, enable HTTPS with
-   Let's Encrypt, then reach the panel at `https://panel.studipod.com` and **delete the port 3000
-   rule** from the Hostinger firewall.
+Docker bypasses the server's own firewall (UFW), so use Hostinger's network firewall instead.
+
+1. hPanel → **VPS → Security → Firewall** → **Create firewall** → attach it to your VPS.
+2. Add these **inbound** rules (drop everything else):
+
+   | Port | Protocol | Source                              | Why                               |
+   | ---- | -------- | ----------------------------------- | --------------------------------- |
+   | 22   | TCP      | Your IP (or Anywhere if it changes) | SSH                               |
+   | 80   | TCP      | Anywhere                            | HTTP (redirects to HTTPS)         |
+   | 443  | TCP      | Anywhere                            | HTTPS                             |
+   | 3000 | TCP      | Your IP only                        | Dokploy panel — removed in Step 6 |
+
+   Never open 5432 (PostgreSQL) or 6379 (Redis).
+
+✅ **Check:** the Dokploy panel still opens from your computer.
+
+### Step 5 — Point the domain at the server
+
+At your DNS provider (hPanel → **Domains → DNS / Nameservers** if the domain is at Hostinger):
+
+| Type | Name    | Value    |
+| ---- | ------- | -------- |
+| A    | `@`     | `VPS_IP` |
+| A    | `www`   | `VPS_IP` |
+| A    | `panel` | `VPS_IP` |
+
+If the domain's DNS is on **Cloudflare**, set these records to **DNS only** (grey cloud). The
+orange-cloud proxy would make every visitor look like the same IP to the rate limiter and can
+block certificate issuing.
+
+✅ **Check:** after a few minutes, `nslookup studipod.com` and `nslookup panel.studipod.com`
+return `VPS_IP`.
+
+### Step 6 — Put the Dokploy panel behind HTTPS
+
+1. In Dokploy open **Settings → Web Server** (or **Server → Domain**).
+2. Set the domain to `panel.studipod.com`, enable **HTTPS** with **Let's Encrypt**, save.
+3. Open `https://panel.studipod.com` and log in.
+4. Back in the Hostinger firewall, **delete the port 3000 rule**.
+
+✅ **Check:** `https://panel.studipod.com` works with a padlock, and `http://VPS_IP:3000` no
+longer loads.
 
 ---
 
-## 5. Point your domain at the VPS
+## Part C — Create the services
 
-At your DNS provider (Hostinger's DNS zone editor or wherever the domain is managed) create:
+### Step 7 — Create the project
 
-| Type | Name    | Value         | Purpose                              |
-| ---- | ------- | ------------- | ------------------------------------ |
-| A    | `@`     | `YOUR_VPS_IP` | `studipod.com`                       |
-| A    | `www`   | `YOUR_VPS_IP` | `www.studipod.com`                   |
-| A    | `panel` | `YOUR_VPS_IP` | Dokploy panel (`panel.studipod.com`) |
+Dokploy → **Projects → Create Project** → name: `StudiPod`.
 
-Add `AAAA` records too if your VPS has an IPv6 address. Wait until `nslookup studipod.com` returns
-your VPS IP before requesting certificates.
+✅ **Check:** the `StudiPod` project opens and is empty.
 
-> **Using Cloudflare DNS?** Set these records to **DNS only** (grey cloud). If you enable the
-> Cloudflare proxy (orange cloud), every request reaches the server from Cloudflare's IP addresses,
-> so per-visitor rate limiting would group many visitors together, and Let's Encrypt HTTP
-> challenges can fail. Only proxy through Cloudflare if you also configure Traefik to trust
-> Cloudflare's IP ranges.
+### Step 8 — Create the PostgreSQL database
 
----
+1. In the project: **Create Service → Database → PostgreSQL**.
 
-## 6. Create the project, PostgreSQL and Redis
-
-### 6.1 PostgreSQL
-
-1. Dokploy → **Projects → Create Project** → name it `StudiPod`.
-2. Inside the project: **Create Service → Database → PostgreSQL**.
-
-   | Field         | Value                                              |
-   | ------------- | -------------------------------------------------- |
-   | Name          | `studipod-db`                                      |
-   | Database name | `studipod`                                         |
-   | User          | `studipod_owner`                                   |
-   | Password      | Generate a long random password (password manager) |
-   | Docker image  | `postgres:17`                                      |
-
-3. Click **Create**, then **Deploy** the database.
-4. Open the database's **General / Connection** tab and copy the **Internal connection URL**. It
-   looks like:
-
-   ```
-   postgresql://studipod_owner:<password>@<internal-host>:5432/studipod
-   ```
-
-   `<internal-host>` is the database's internal service name, reachable only from containers on the
-   same Dokploy network.
-
-5. **Do not** set an external port for the database. Leave it internal-only.
-
-### 6.2 Redis (rate limiting)
-
-The waitlist limits each visitor to 5 submissions per 10 minutes. A Redis service on the same VPS
-stores these counters so they are shared and survive app redeploys.
-
-1. Inside the `StudiPod` project: **Create Service → Database → Redis**.
-
-   | Field        | Value                                              |
-   | ------------ | -------------------------------------------------- |
-   | Name         | `studipod-redis`                                   |
-   | Password     | Generate a long random password (password manager) |
-   | Docker image | `redis:7.4` (or Dokploy's default Redis image)     |
+   | Field         | Value                                                   |
+   | ------------- | ------------------------------------------------------- |
+   | Name          | `studipod-db`                                           |
+   | Database name | `studipod`                                              |
+   | User          | `studipod_owner`                                        |
+   | Password      | new random password → save as `POSTGRES_OWNER_PASSWORD` |
+   | Docker image  | `postgres:17`                                           |
 
 2. **Create**, then **Deploy**.
-3. Copy the **Internal connection URL** from the Redis service page. It looks like:
+3. Open the database's connection details and copy the **internal host** (the service name in
+   the internal connection URL) into `POSTGRES_INTERNAL_HOST`.
+4. Leave **External port** empty.
 
-   ```
-   redis://default:<redis-password>@<redis-internal-host>:6379
-   ```
+✅ **Check:** the database shows as running (green) in Dokploy.
 
-   You will use it as `REDIS_URL` in §9.
+### Step 9 — Create the Redis service (rate limiting)
 
-4. **Do not** set an external port and **never** open port 6379 in the firewall. Redis must only
-   be reachable from the app container, and it must always have a password.
-5. No backups are needed: it only holds short-lived rate-limit counters that expire on their own.
+1. In the project: **Create Service → Database → Redis**.
 
-> **Already have Redis installed directly on the VPS (outside Dokploy)?** It can be used too, but
-> the Dokploy service above is simpler and safer: a host-level Redis must listen on the Docker
-> network gateway (not `0.0.0.0`), have `requirepass` set, and be referenced from the container by
-> the gateway IP (e.g. `redis://default:<password>@172.17.0.1:6379`).
+   | Field        | Value                                          |
+   | ------------ | ---------------------------------------------- |
+   | Name         | `studipod-redis`                               |
+   | Password     | new random password → save as `REDIS_PASSWORD` |
+   | Docker image | `redis:7.4` (or Dokploy's default)             |
+
+2. **Create**, then **Deploy**.
+3. Copy the **internal host** from its connection details into `REDIS_INTERNAL_HOST`.
+4. Leave **External port** empty. No backups are needed (it only stores short-lived counters).
+
+✅ **Check:** Redis shows as running.
+
+### Step 10 — Create the Cloudflare Turnstile widget (bot protection)
+
+1. [dash.cloudflare.com](https://dash.cloudflare.com) → **Turnstile → Add widget**.
+2. Name: `StudiPod waitlist`. Hostnames: `studipod.com` and `www.studipod.com`.
+3. Mode: **Managed** → **Create**.
+4. Save the **Site key** (`TURNSTILE_SITE_KEY`) and **Secret key** (`TURNSTILE_SECRET_KEY`).
+
+✅ **Check:** the widget is listed with both hostnames.
+
+### Step 11 — Set up the hello@studipod.com mailbox
+
+The daily sign-up digest is sent through this mailbox.
+
+1. hPanel → **Emails** → make sure `hello@studipod.com` exists (create it if not), with a strong
+   password → save as `MAILBOX_PASSWORD`. Turn on two-factor authentication for webmail if
+   available.
+2. hPanel → **Emails → DNS / Email authentication**: if the domain's DNS is **not** managed by
+   Hostinger, copy the **MX, SPF, DKIM and DMARC** records shown there into your DNS provider.
+3. Send a test email to `hello@studipod.com` from another address.
+
+✅ **Check:** the test email arrives in the `hello@studipod.com` inbox (webmail).
 
 ---
 
-## 7. Create the external services (Turnstile, optional Upstash)
+## Part D — Deploy the website
 
-### 7.1 Cloudflare Turnstile
+### Step 12 — Create the application from GitHub
 
-1. Cloudflare dashboard → **Turnstile → Add widget**, name it `StudiPod waitlist`.
-2. **Hostnames:** `studipod.com` and `www.studipod.com` (your real domains).
-3. **Mode:** _Managed_. Copy the **Site key** and **Secret key**.
-
-### 7.2 Upstash Redis (optional alternative)
-
-Not needed if you created the Dokploy Redis service in §6.2. Use Upstash instead only if you prefer
-a managed service: create a database at [console.upstash.com](https://console.upstash.com) and set
-`UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` (and leave `REDIS_URL` empty — when both are
-set, `REDIS_URL` wins).
-
----
-
-## 8. Create the application
-
-1. In the `StudiPod` project: **Create Service → Application** → name it `studipod-web`.
-2. **Provider:** GitHub. If this is the first time, follow Dokploy's prompt to install the
-   **Dokploy GitHub App** and grant it access to `studipod_fullstack_project` only.
-3. Select:
+1. In the project: **Create Service → Application** → name `studipod-web`.
+2. **Provider: GitHub.** If asked, install the **Dokploy GitHub App** and give it access to
+   **only** `studipod_fullstack_project`.
+3. Fill in:
 
    | Field          | Value                                      |
    | -------------- | ------------------------------------------ |
    | Repository     | `imdanielubani/studipod_fullstack_project` |
    | Branch         | `main`                                     |
-   | **Build Path** | `/studipod_website`                        |
-   | Trigger        | On push (auto-deploy)                      |
+   | **Build Path** | `/studipod_website` ← important            |
+   | Build Type     | **Nixpacks**                               |
+   | Auto deploy    | On (deploy on push)                        |
 
-4. **Build Type:** _Nixpacks_ (default). Nixpacks detects Next.js, runs `npm ci` and
-   `npm run build` (which runs `prisma generate && next build`), then starts the app with
-   `npm run start`. If you prefer a fully reproducible container, use the **Dockerfile** option in
-   the [appendix](#appendix-dockerfile-build-option) instead.
-5. **Start command** (Advanced / Run command — optional but recommended):
+4. In **Advanced** (Run / Start command) enter:
 
    ```
    npx prisma migrate deploy && npm run start
    ```
 
-   This applies any pending database migrations each time the container starts, before the site
-   begins serving traffic (§10).
+   This creates/updates the database tables every time the app starts.
 
-6. Save. **Do not deploy yet** — add the environment variables first.
+5. **Save** — do **not** deploy yet.
 
----
+✅ **Check:** `studipod-web` appears in the project with the repository connected.
 
-## 9. Configure environment variables
+### Step 13 — Add the environment variables
 
-Open `studipod-web` → **Environment** and paste (replace every placeholder):
+1. On the VPS, generate the cron secret and save it as `CRON_SECRET`:
 
-```dotenv
-# --- Site --------------------------------------------------------------------
-NEXT_PUBLIC_SITE_URL=https://studipod.com
+   ```bash
+   openssl rand -hex 32
+   ```
 
-# --- Database (internal Dokploy network) ---------------------------------------
-# Runtime connection. After §12, replace this with the least-privilege role.
-DATABASE_URL=postgresql://studipod_owner:<password>@<internal-host>:5432/studipod?schema=public
-# Used by `prisma migrate deploy` (owner role). No pooler, so same host.
-DIRECT_URL=postgresql://studipod_owner:<password>@<internal-host>:5432/studipod?schema=public
+2. Open `studipod-web` → **Environment**, paste the block below and **replace every `<…>`** with
+   the values from your worksheet:
 
-# --- Bot protection --------------------------------------------------------------
-CLOUDFLARE_TURNSTILE_SITE_KEY=<turnstile site key>
-CLOUDFLARE_TURNSTILE_SECRET_KEY=<turnstile secret key>
+   ```dotenv
+   # --- Site
+   NEXT_PUBLIC_SITE_URL=https://studipod.com
+   NEXT_TELEMETRY_DISABLED=1
+   NIXPACKS_NODE_VERSION=22
 
-# --- Rate limiting (Dokploy Redis service, §6.2) ------------------------------------
-REDIS_URL=redis://default:<redis-password>@<redis-internal-host>:6379
-# Optional alternative instead of REDIS_URL (§7.2):
-# UPSTASH_REDIS_REST_URL=https://<your-db>.upstash.io
-# UPSTASH_REDIS_REST_TOKEN=<upstash rest token>
+   # --- Database (owner login for now; Step 16 switches the website to a restricted login)
+   DATABASE_URL=postgresql://studipod_owner:<POSTGRES_OWNER_PASSWORD>@<POSTGRES_INTERNAL_HOST>:5432/studipod?schema=public
+   DIRECT_URL=postgresql://studipod_owner:<POSTGRES_OWNER_PASSWORD>@<POSTGRES_INTERNAL_HOST>:5432/studipod?schema=public
 
-# --- Build settings ----------------------------------------------------------------
-NIXPACKS_NODE_VERSION=22
-NEXT_TELEMETRY_DISABLED=1
+   # --- Rate limiting (Redis on this VPS)
+   REDIS_URL=redis://default:<REDIS_PASSWORD>@<REDIS_INTERNAL_HOST>:6379
 
-# --- Optional footer links (leave empty to show "Soon") ------------------------------
-NEXT_PUBLIC_INSTAGRAM_URL=
-NEXT_PUBLIC_LINKEDIN_URL=
-NEXT_PUBLIC_CONTACT_EMAIL=
-NEXT_PUBLIC_FAQ_URL=
-```
+   # --- Bot protection
+   CLOUDFLARE_TURNSTILE_SITE_KEY=<TURNSTILE_SITE_KEY>
+   CLOUDFLARE_TURNSTILE_SECRET_KEY=<TURNSTILE_SECRET_KEY>
 
-Notes:
+   # --- Daily sign-up digest to hello@studipod.com
+   SMTP_HOST=smtp.hostinger.com
+   SMTP_PORT=465
+   SMTP_USER=hello@studipod.com
+   SMTP_PASSWORD=<MAILBOX_PASSWORD>
+   SMTP_FROM=StudiPod Waitlist <hello@studipod.com>
+   WAITLIST_DIGEST_TO=hello@studipod.com
+   CRON_SECRET=<CRON_SECRET>
 
-- `NEXT_PUBLIC_*` values and `CLOUDFLARE_TURNSTILE_SITE_KEY` are baked in **at build time**. After
-  changing them, **redeploy** (a restart is not enough). Dokploy passes the Environment tab to
-  Nixpacks builds; with the Dockerfile option they must also be set as **build arguments** (see
-  the appendix).
-- The internal database connection stays on Docker's private network, so `sslmode` is not needed.
-- **Never** put secrets in `NEXT_PUBLIC_*` variables, and never commit them to the repository.
-- `NIXPACKS_NODE_VERSION=22` pins a Node.js version the project supports (≥ 22.12).
+   # --- Optional footer links (leave empty to show "Soon")
+   NEXT_PUBLIC_INSTAGRAM_URL=
+   NEXT_PUBLIC_LINKEDIN_URL=
+   NEXT_PUBLIC_FAQ_URL=
+   ```
 
----
+3. **Save.**
 
-## 10. Database migrations
+Good to know:
 
-Migrations create the `waitlist_entries` table, its indexes and integrity constraints.
+- `NEXT_PUBLIC_…` values and the Turnstile **site** key are baked in when the site is built —
+  after changing them, use **Redeploy**, not just restart.
+- The contact email `hello@studipod.com` is built in; you don't need to set it.
+- These values are secrets: never commit them to GitHub.
 
-**Recommended (automatic):** with the start command from §8 —
-`npx prisma migrate deploy && npm run start` — migrations run on every container start using
-`DIRECT_URL` (the owner role). `migrate deploy` only applies migrations that have not run yet, so
-repeated starts are safe.
+✅ **Check:** the Environment tab shows all variables with no `<…>` placeholders left.
 
-**Manual alternative:** leave the default start command and run migrations yourself after each
-deploy that adds one. Over SSH:
+### Step 14 — First deployment
 
-```bash
-docker ps --format '{{.Names}}' | grep studipod-web       # find the app container name
-docker exec -it <container-name> npx prisma migrate deploy
-```
+1. `studipod-web` → **Deploy**.
+2. Watch **Deployments → Logs**. The build takes a few minutes and should end with a route list
+   including `ƒ /api/waitlist`, `ƒ /api/internal/waitlist-digest` and `ƒ Proxy (Middleware)`.
+3. Then open the runtime **Logs**: you should see the migrations being applied
+   (`All migrations have been successfully applied` on the first start) and `Ready`.
 
-Expected output ends with `All migrations have been successfully applied.` (or
-`No pending migrations to apply.`).
+✅ **Check:** the application status is **Running** and the logs show no errors.
 
----
+### Step 15 — Connect the domain with HTTPS
 
-## 11. Deploy and attach the domain
-
-1. `studipod-web` → **Deploy**. Follow the build in **Deployments → Logs**. A successful build ends
-   with the Next.js route list (including `ƒ /api/waitlist` and `ƒ Proxy (Middleware)`), and the
-   runtime log shows the migration output followed by `Ready`.
-2. `studipod-web` → **Domains → Add Domain**:
+1. `studipod-web` → **Domains → Add Domain**:
 
    | Field          | Value          |
    | -------------- | -------------- |
@@ -353,222 +349,209 @@ Expected output ends with `All migrations have been successfully applied.` (or
    | HTTPS          | On             |
    | Certificate    | Let's Encrypt  |
 
-   Repeat for `www.studipod.com` (or add a redirect from `www` to the apex if your Dokploy version
-   offers it).
+2. Add a second domain for `www.studipod.com` the same way (or a redirect from `www` to the main
+   domain if your Dokploy version offers it).
+3. Wait about a minute for the certificates.
 
-3. Wait a minute for the certificate, then open `https://studipod.com`.
+✅ **Check:** `https://studipod.com` loads the StudiPod homepage with a padlock, and the browser
+console (F12 → Console) shows no red errors.
 
 ---
 
-## 12. Create the least-privilege database role
+## Part E — Harden and automate
 
-The app should not run as the database owner. This role can **only insert** sign-ups — it cannot
-read names or emails, update, delete or change the schema (see
-[SECURITY.md](./SECURITY.md#database-security)).
+### Step 16 — Switch to restricted database logins
 
-1. Generate a long random password for the new role (32+ characters).
-2. Open a `psql` session in the database container — in Dokploy: database → **Terminal** /
-   **Docker terminal**, or over SSH:
+So far the website connects as the database **owner**. Now create two limited logins:
+
+- `studipod_app` — used by the website; can **only add** sign-ups (cannot read or delete them).
+- `studipod_reporter` — used by the daily digest; can **read** sign-ups, cannot change them.
+
+1. Generate two different passwords (save as `APP_DB_PASSWORD` and `REPORTER_DB_PASSWORD`):
 
    ```bash
-   docker ps --format '{{.Names}}' | grep studipod-db
+   openssl rand -hex 24
+   openssl rand -hex 24
+   ```
+
+2. Open a database shell. Either `studipod-db` → **Terminal** in Dokploy, or over SSH:
+
+   ```bash
+   docker ps --format '{{.Names}}' | grep studipod-db        # note the container name
    docker exec -it <db-container-name> psql -U studipod_owner -d studipod
    ```
 
-3. Paste the contents of
-   [`prisma/sql/least-privilege-role.sql`](./prisma/sql/least-privilege-role.sql) with
-   `REPLACE_WITH_A_LONG_RANDOM_SECRET` replaced by the new password, then `\q`. **Do not save the
-   password into the repository.**
-4. In `studipod-web` → **Environment**, change **only** `DATABASE_URL` to use the new role:
+3. Open [`prisma/sql/least-privilege-role.sql`](./prisma/sql/least-privilege-role.sql) from
+   GitHub, copy its contents into a text editor, replace:
+   - `REPLACE_WITH_A_LONG_RANDOM_SECRET` → `APP_DB_PASSWORD`
+   - `REPLACE_WITH_A_DIFFERENT_LONG_RANDOM_SECRET` → `REPORTER_DB_PASSWORD`
+
+   then paste it into the `psql` prompt and press Enter. Type `\q` to exit.
+   **Do not save the edited file anywhere.**
+
+4. In `studipod-web` → **Environment**, change `DATABASE_URL` and add `DIGEST_DATABASE_URL`
+   (leave `DIRECT_URL` on the owner login — migrations need it):
 
    ```dotenv
-   DATABASE_URL=postgresql://studipod_app:<new-password>@<internal-host>:5432/studipod?schema=public
+   DATABASE_URL=postgresql://studipod_app:<APP_DB_PASSWORD>@<POSTGRES_INTERNAL_HOST>:5432/studipod?schema=public
+   DIGEST_DATABASE_URL=postgresql://studipod_reporter:<REPORTER_DB_PASSWORD>@<POSTGRES_INTERNAL_HOST>:5432/studipod?schema=public
    ```
 
-   Keep `DIRECT_URL` on the owner role (migrations need it).
+5. **Save**, then **Redeploy**.
 
-5. **Redeploy** (or restart) the application.
+✅ **Check:** submit the waitlist form on `https://studipod.com` with your own details — you see
+"You're on the list, …". Submitting the same email again shows "This email address is already on
+the waitlist."
 
----
+### Step 17 — Schedule the daily sign-up digest
 
-## 12b. Daily waitlist digest email (Hostinger mailbox)
+Every day at 07:00 UTC, `hello@studipod.com` receives the people who joined since the previous
+digest (with a CSV attachment). Days with no sign-ups send nothing.
 
-Every morning the site can email `hello@studipod.com` the people who joined since the previous
-digest, with the running total and a CSV attachment. Quiet days send nothing.
+1. `studipod-web` → **Schedules** → **Add schedule**:
+   - **Name:** `Waitlist digest`
+   - **Cron expression:** `0 7 * * *`
+   - **Command:**
 
-**1. Mailbox.** In hPanel → **Emails**, make sure `hello@studipod.com` exists (or create a
-dedicated sender such as `no-reply@studipod.com`). If the domain's DNS is not managed by
-Hostinger, add the **SPF, DKIM and DMARC** records shown in hPanel → Emails → DNS so the digest
-is not marked as spam.
+     ```bash
+     node -e "fetch('http://127.0.0.1:3000/api/internal/waitlist-digest',{method:'POST',headers:{Authorization:'Bearer '+process.env.CRON_SECRET}}).then(async r=>{console.log(r.status,await r.text());if(!r.ok)process.exit(1)})"
+     ```
 
-**2. Reporting database login.** The website's `studipod_app` login cannot read registrations, so
-the digest uses its own read-only login. The second half of
-[`prisma/sql/least-privilege-role.sql`](./prisma/sql/least-privilege-role.sql) creates
-`studipod_reporter` — run it as in §12 with a **different** long random password.
-
-**3. Environment variables** (`studipod-web` → **Environment**), then **Redeploy**:
-
-```dotenv
-SMTP_HOST=smtp.hostinger.com
-SMTP_PORT=465
-SMTP_USER=hello@studipod.com
-SMTP_PASSWORD=<mailbox password>
-SMTP_FROM=StudiPod Waitlist <hello@studipod.com>
-WAITLIST_DIGEST_TO=hello@studipod.com
-CRON_SECRET=<long random value, 32+ characters>
-DIGEST_DATABASE_URL=postgresql://studipod_reporter:<reporter-password>@<internal-host>:5432/studipod?schema=public
-```
-
-`SMTP_FROM` must use the same mailbox as `SMTP_USER` (Hostinger rejects other senders).
-Generate `CRON_SECRET` with `openssl rand -hex 32`.
-
-**4. Schedule it daily.** Choose one:
-
-- **Dokploy schedule (recommended):** `studipod-web` → **Schedules** → **Add schedule**, cron
-  expression `0 7 * * *` (07:00 UTC), and this command, which runs inside the app container:
-
-  ```bash
-  node -e "fetch('http://127.0.0.1:3000/api/internal/waitlist-digest',{method:'POST',headers:{Authorization:'Bearer '+process.env.CRON_SECRET}}).then(async r=>{console.log(r.status,await r.text());if(!r.ok)process.exit(1)})"
-  ```
-
-- **Server cron (alternative):** put the secret in a root-only file and call the public URL:
-
-  ```bash
-  echo 'CRON_SECRET=<same value>' > /root/.studipod-cron && chmod 600 /root/.studipod-cron
-  (crontab -l 2>/dev/null; echo '0 7 * * * . /root/.studipod-cron && curl -fsS -X POST -H "Authorization: Bearer $CRON_SECRET" https://studipod.com/api/internal/waitlist-digest > /dev/null') | crontab -
-  ```
-
-**5. Test it now** (from your computer, with the real secret):
-
-```bash
-curl -X POST -H "Authorization: Bearer <CRON_SECRET>" https://studipod.com/api/internal/waitlist-digest
-```
-
-`"status":"sent"` means the email was accepted by Hostinger; `"status":"skipped"` means there
-were no new sign-ups since the last digest. Responses `401` = wrong secret, `503` = a setting is
-missing, `500` = see the app logs (`waitlist_digest.failed`).
-
-## 13. Verify the deployment
-
-**Headers and SEO files** (from your computer):
-
-```bash
-curl -sI https://studipod.com | grep -iE "content-security-policy|strict-transport|x-content-type|referrer-policy|x-frame"
-curl -s https://studipod.com/robots.txt
-curl -s https://studipod.com/sitemap.xml
-```
-
-You should see a `Content-Security-Policy` with `'nonce-…'` and `'strict-dynamic'`,
-`Strict-Transport-Security`, `X-Content-Type-Options: nosniff`, `Referrer-Policy` and
-`X-Frame-Options: DENY`; robots.txt and the sitemap should use `https://studipod.com`.
-
-**API protections**
-
-```bash
-curl -s -o /dev/null -w "%{http_code}\n" https://studipod.com/api/waitlist            # 405
-curl -s -o /dev/null -w "%{http_code}\n" -X POST https://studipod.com/api/waitlist \
-  -H "Content-Type: text/plain" -d "x"                                                 # 415
-```
-
-**In the browser**
-
-1. Open the site and check the browser console shows **no errors** (CSP problems appear here).
-2. Click **Join the Waitlist** and register with your own details → "You're on the list, …".
-3. Submit the same email again → "This email address is already on the waitlist."
-4. Confirm the row in the database (as the owner):
+2. **No Schedules tab in your Dokploy version?** Use the server's cron instead (over SSH):
 
    ```bash
-   docker exec -it <db-container-name> psql -U studipod_owner -d studipod \
-     -c "SELECT full_name, email, status, created_at FROM waitlist_entries ORDER BY created_at DESC LIMIT 5;"
+   echo 'CRON_SECRET=<CRON_SECRET>' > /root/.studipod-cron && chmod 600 /root/.studipod-cron
+   (crontab -l 2>/dev/null; echo '0 7 * * * . /root/.studipod-cron && curl -fsS -X POST -H "Authorization: Bearer $CRON_SECRET" https://studipod.com/api/internal/waitlist-digest > /dev/null') | crontab -
    ```
 
-**Logs:** `studipod-web` → **Logs**. There should be no `rate_limit.distributed_store_missing`,
-`rate_limit.redis_connection_error`, `rate_limit.store_unavailable` or
-`waitlist.registration_failed` entries.
+3. **Send one now to test** (from your computer):
 
-**Rate limiting uses Redis:** after a test submission, check a counter key exists (it expires
-after 10 minutes):
+   ```bash
+   curl -X POST -H "Authorization: Bearer <CRON_SECRET>" https://studipod.com/api/internal/waitlist-digest
+   ```
+
+   - `"status":"sent"` → check the `hello@studipod.com` inbox (and spam folder).
+   - `"status":"skipped"` → no new sign-ups since the last digest (expected if you just tested).
+   - `401` wrong secret · `503` a setting is missing · `500` see Troubleshooting.
+
+✅ **Check:** the digest email with your test sign-up arrives at `hello@studipod.com`.
+
+### Step 18 — Set up backups
+
+1. Create an S3-compatible bucket (e.g. Cloudflare R2 or Backblaze B2) and an access key that can
+   only use that bucket.
+2. Dokploy → **Settings → S3 Destinations → Add** → enter the bucket details → **Test**.
+3. `studipod-db` → **Backups → Create backup**: destination = your bucket, schedule `0 3 * * *`
+   (daily 03:00), keep e.g. 14 backups.
+4. Optional second layer: hPanel → **VPS → Backups / Snapshots** — enable automatic backups.
+
+✅ **Check:** run the backup once manually and confirm the file appears in the bucket.
+
+### Step 19 — Protect the code that gets deployed
+
+Every push to `main` deploys automatically, so make sure only tested code reaches `main`:
+
+1. GitHub → repository **Settings → Branches → Add rule** for `main`:
+   require a pull request, require status checks (the **CI** and **CodeQL** workflows) to pass,
+   and block force pushes.
+2. **Settings → Code security:** enable secret scanning, push protection, Dependabot alerts and
+   private vulnerability reporting.
+
+✅ **Check:** the rule appears under Branch protection rules.
+
+---
+
+## Part F — Final checks
+
+### Step 20 — Go-live checklist
+
+Run these from your own computer:
 
 ```bash
-docker exec -it <redis-container-name> redis-cli -a '<redis-password>' --no-auth-warning \
-  --scan --pattern 'studipod:ratelimit:waitlist:*'
+# Security headers (look for content-security-policy, strict-transport-security, x-frame-options)
+curl -sI https://studipod.com | grep -iE "content-security-policy|strict-transport|x-content-type|x-frame"
+
+# SEO files use the real domain
+curl -s https://studipod.com/robots.txt
+curl -s https://studipod.com/sitemap.xml
+
+# API protections: expect 405 then 415
+curl -s -o /dev/null -w "%{http_code}\n" https://studipod.com/api/waitlist
+curl -s -o /dev/null -w "%{http_code}\n" -X POST https://studipod.com/api/waitlist -H "Content-Type: text/plain" -d x
+
+# Database and Redis are NOT reachable from the internet (both should fail / time out)
+nc -vz -w 5 VPS_IP 5432
+nc -vz -w 5 VPS_IP 6379
 ```
 
-**Security checks**
+- [ ] Site loads on `https://studipod.com` and `https://www.studipod.com` with a padlock.
+- [ ] Browser console shows no errors; the menu, sections and form work on desktop and mobile.
+- [ ] Test sign-up works; duplicate email is rejected.
+- [ ] Footer "Contact" opens an email to `hello@studipod.com`.
+- [ ] Digest email received at `hello@studipod.com`.
+- [ ] App logs show **none** of: `rate_limit.distributed_store_missing`,
+      `rate_limit.redis_connection_error`, `waitlist.registration_failed`.
+- [ ] Ports 3000, 5432 and 6379 are closed from outside.
+- [ ] A database backup exists in the bucket.
+- [ ] Privacy Policy and Terms of Use content is approved and published (currently placeholders).
 
-- `https://panel.studipod.com` loads with a valid certificate, and `http://YOUR_VPS_IP:3000` no
-  longer responds.
-- From your computer, `nc -vz YOUR_VPS_IP 5432` and `nc -vz YOUR_VPS_IP 6379` both fail
-  (PostgreSQL and Redis are not exposed).
+**To see everyone on the waitlist at any time** (over SSH):
 
----
+```bash
+docker exec -it <db-container-name> psql -U studipod_owner -d studipod \
+  -c "SELECT full_name, email, examination_category, created_at FROM waitlist_entries ORDER BY created_at DESC;"
+```
 
-## 14. Backups, updates and rollbacks
-
-**Database backups (essential)**
-
-1. Dokploy → _Settings → S3 Destinations_ → add an S3-compatible bucket (e.g. Cloudflare R2,
-   Backblaze B2, AWS S3) with credentials limited to that bucket.
-2. `studipod-db` → **Backups** → create a scheduled backup (e.g. daily at 03:00) to that
-   destination, with a retention count.
-3. Test a restore occasionally.
-4. Optionally enable **Hostinger VPS snapshots / automatic backups** in hPanel as a second layer.
-
-**Updates**
-
-- **Code:** push or merge to `main` → Dokploy rebuilds and redeploys automatically. Require the
-  GitHub CI checks to pass before merging (branch protection), so only green code is deployed.
-- **Environment changes:** edit **Environment**, then **Redeploy**.
-- **Dokploy itself:** update from _Settings_ when new versions are released.
-- **Server:** unattended-upgrades applies security patches; reboot occasionally for kernel updates
-  during a quiet period.
-
-**Rollbacks**
-
-- Use **Deployments → Rollback** on a previous successful deployment if your Dokploy version
-  offers it, or revert the commit on GitHub (`git revert <sha>`) and push — Dokploy redeploys the
-  previous code.
-- Database migrations are not rolled back automatically.
-
-**Monitoring**
-
-- Dokploy's **Monitoring** tab shows CPU, memory and disk for the server and each service.
-- Watch app logs for spikes of `waitlist.rate_limited`, `waitlist.bot_verification_failed` and
-  `waitlist.registration_failed`.
-- Optionally add an external uptime monitor for `https://studipod.com`.
+🎉 **StudiPod is live.**
 
 ---
 
-## 15. Troubleshooting
+## Updating the site
 
-| Symptom                                                                              | Likely cause and fix                                                                                                                                                                                                                  |
-| ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Build fails: no `package.json` / Next.js not detected                                | **Build Path** is not `/studipod_website` (§8).                                                                                                                                                                                       |
-| Build killed / "JavaScript heap out of memory" / exit code 137                       | Not enough RAM. Add swap (§3.3) or upgrade the VPS plan, then redeploy.                                                                                                                                                               |
-| Build fails with an `engines` / Node version error                                   | Set `NIXPACKS_NODE_VERSION=22` (§9) and redeploy.                                                                                                                                                                                     |
-| Container restarts; log shows `prisma: not found` / `Cannot find module 'prisma'`    | The run image does not include the Prisma CLI. Use the manual migration method (§10) with the default start command, or switch to the Dockerfile option (appendix), which includes it.                                                |
-| Log shows `P1001: Can't reach database server`                                       | Wrong `<internal-host>` or the database is not running. Copy the **internal** URL from the database page; make sure the app and database are in the same Dokploy project/network.                                                     |
-| Form shows "Something went wrong on our side…"; logs show `P2021`                    | The table does not exist yet — migrations did not run (§10).                                                                                                                                                                          |
-| `permission denied for table waitlist_entries`                                       | The least-privilege role is missing grants — re-run the script from §12 as the owner.                                                                                                                                                 |
-| Every submission fails with "We couldn't verify that you're human"                   | Turnstile hostname mismatch or wrong keys: the domain must be in the widget's hostnames, `NEXT_PUBLIC_SITE_URL` must match the domain people use, and both keys must belong to the same widget. Redeploy after changing the site key. |
-| Submissions fail with "We couldn't verify your request right now" (503)              | The server cannot reach `challenges.cloudflare.com` (outbound firewall/DNS) or the secret key is invalid. Check the app logs (`turnstile.siteverify_*`).                                                                              |
-| Logs show `rate_limit.redis_connection_error` / `rate_limit.store_unavailable`       | The app cannot reach Redis (wrong `<redis-internal-host>` or password, or the Redis service is stopped). Sign-ups keep working on the per-instance in-memory fallback, but fix `REDIS_URL` (§6.2, §9) and redeploy.                   |
-| Digest returns 500; logs show `waitlist_digest.failed` with `EAUTH`                  | Wrong SMTP username/password, or `SMTP_FROM` is not the same mailbox as `SMTP_USER`. Check the mailbox credentials in hPanel → Emails.                                                                                                |
-| Digest returns 500 with `permission denied`                                          | `DIGEST_DATABASE_URL` is missing (so the insert-only `studipod_app` login was used) or the reporter grants were not applied — see §12b step 2.                                                                                        |
-| Digest emails arrive in spam                                                         | SPF/DKIM/DMARC records for studipod.com are missing — add the records shown in hPanel → Emails → DNS.                                                                                                                                 |
-| Many different visitors get "Too many attempts" together                             | All requests appear to come from one IP — typically the Cloudflare proxy (orange cloud) is on. Switch the DNS records to **DNS only** (§5) or configure Traefik to trust Cloudflare's IP ranges.                                      |
-| Certificate not issued / browser shows "not secure"                                  | DNS does not point at the VPS yet, ports 80/443 are closed in the Hostinger firewall, or the Cloudflare proxy is on. Fix, then re-save the domain in Dokploy.                                                                         |
-| Social previews or canonical URLs show `localhost`                                   | `NEXT_PUBLIC_SITE_URL` was missing at build time — set it and **redeploy**.                                                                                                                                                           |
-| Browser console: "Refused to load … because it violates the Content Security Policy" | A new third-party resource was added without updating the CSP in `src/lib/security/headers.ts`. Add only the specific origin needed.                                                                                                  |
+| Task                     | How                                                                                       |
+| ------------------------ | ----------------------------------------------------------------------------------------- |
+| Ship code changes        | Merge to `main` → Dokploy builds and deploys automatically                                |
+| Change a setting         | `studipod-web` → Environment → save → **Redeploy**                                        |
+| Database changes         | Applied automatically on start (`prisma migrate deploy` in the start command)             |
+| Roll back                | Deployments → previous deployment → **Rollback** (if available), or `git revert` and push |
+| Update Dokploy           | Settings → update when a new version is offered                                           |
+| Rotate a password/secret | Change it at the source (database, mailbox, Cloudflare), update Environment, **Redeploy** |
+| Monitor                  | Dokploy **Monitoring** (CPU, memory, disk) and the app **Logs**                           |
+
+Database changes are not undone by a rollback — restore from a backup if ever needed.
+
+---
+
+## Troubleshooting
+
+| Symptom                                                   | Likely cause and fix                                                                                                                                                                              |
+| --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Build fails: no `package.json` / Next.js not detected     | **Build Path** is not `/studipod_website` (Step 12).                                                                                                                                              |
+| Build killed, "heap out of memory" or exit code 137       | Not enough memory — add swap (Step 3) or upgrade the VPS, then redeploy.                                                                                                                          |
+| Build fails with a Node.js / `engines` error              | Make sure `NIXPACKS_NODE_VERSION=22` is set (Step 13).                                                                                                                                            |
+| Container restarts; log says `prisma: not found`          | Use the [Dockerfile build](#appendix-dockerfile-build-option), or set the default start command and run `docker exec -it <app-container> npx prisma migrate deploy` after each deploy.            |
+| `P1001: Can't reach database server`                      | Wrong internal host or the database is stopped — recheck `POSTGRES_INTERNAL_HOST` (Step 8).                                                                                                       |
+| Form says "Something went wrong…"; logs show `P2021`      | Tables don't exist yet — migrations didn't run (check the start command, Step 12).                                                                                                                |
+| `permission denied for table waitlist_entries`            | The restricted logins are missing permissions — rerun the SQL in Step 16 as the owner.                                                                                                            |
+| "We couldn't verify that you're human" for everyone       | Turnstile mismatch: the domain must be in the widget's hostnames, `NEXT_PUBLIC_SITE_URL` must match the address people use, and both keys must come from the same widget. Redeploy after changes. |
+| "We couldn't verify your request right now" (503)         | The server can't reach Cloudflare or the Turnstile secret is wrong — check the logs (`turnstile.siteverify_*`).                                                                                   |
+| Logs show `rate_limit.redis_connection_error`             | Wrong Redis host/password or Redis stopped — fix `REDIS_URL` (Steps 9, 13). Sign-ups keep working meanwhile.                                                                                      |
+| Many visitors get "Too many attempts" together            | Cloudflare proxy (orange cloud) is on — switch DNS records to **DNS only** (Step 5).                                                                                                              |
+| No HTTPS certificate                                      | DNS not pointing at `VPS_IP` yet, ports 80/443 closed, or Cloudflare proxy on (Steps 4–5). Re-save the domain afterwards.                                                                         |
+| Digest returns 500 with `EAUTH` in the logs               | Wrong mailbox password, or `SMTP_FROM` isn't the same mailbox as `SMTP_USER` (Steps 11, 13).                                                                                                      |
+| Digest returns 500 with `permission denied`               | `DIGEST_DATABASE_URL` missing or the reporter login wasn't created (Step 16).                                                                                                                     |
+| Digest emails land in spam                                | Missing SPF/DKIM/DMARC records for studipod.com (Step 11).                                                                                                                                        |
+| Social previews show `localhost`                          | `NEXT_PUBLIC_SITE_URL` was missing at build time — set it and **Redeploy**.                                                                                                                       |
+| Console error "Refused to load … Content Security Policy" | A new third-party resource was added without updating `src/lib/security/headers.ts`.                                                                                                              |
 
 ---
 
 ## Appendix: Dockerfile build option
 
-Nixpacks needs no extra files. If you want a fully reproducible image (pinned Node version, Prisma
-CLI guaranteed at runtime, non-root user), add these two files to `studipod_website/`, commit them,
-and in Dokploy set **Build Type → Dockerfile** with **Dockerfile path** `Dockerfile` and the same
-Build Path `/studipod_website`.
+Nixpacks (Step 12) needs no extra files. If you prefer a fully reproducible image — pinned Node.js
+version, Prisma CLI guaranteed inside the container, runs as a non-root user — add these two files
+to `studipod_website/`, commit them, then in Dokploy set **Build Type → Dockerfile**, **Dockerfile
+path** `Dockerfile` and keep Build Path `/studipod_website`.
 
 **`studipod_website/Dockerfile`**
 
@@ -632,16 +615,14 @@ playwright-report
 
 With the Dockerfile option:
 
-- In Dokploy, add the six public values (`NEXT_PUBLIC_SITE_URL`, `CLOUDFLARE_TURNSTILE_SITE_KEY`
-  and the four optional `NEXT_PUBLIC_*` links) under **Build-time arguments**, _and_ keep all
-  variables in **Environment** for runtime.
-- Remove `NIXPACKS_NODE_VERSION` (the Node version is pinned in the Dockerfile) and leave the start
-  command empty (the Dockerfile's `CMD` already runs migrations and starts the server).
-- Secrets (database URLs, `REDIS_URL`, Turnstile secret, Upstash token) are **runtime only** — never pass them
-  as build arguments, because build arguments can end up in image metadata.
+- Add the public values (`NEXT_PUBLIC_SITE_URL`, `CLOUDFLARE_TURNSTILE_SITE_KEY` and any
+  `NEXT_PUBLIC_*` links) under **Build-time arguments** as well as in **Environment**.
+- Remove `NIXPACKS_NODE_VERSION` and clear the custom start command (the Dockerfile's `CMD`
+  already runs migrations and starts the site).
+- Never pass secrets (database URLs, `REDIS_URL`, SMTP password, Turnstile secret,
+  `CRON_SECRET`) as build arguments — they can end up in the image.
 
 ---
 
-For local development, testing and the full environment reference see [README.md](./README.md);
-for the security model see [SECURITY.md](./SECURITY.md); for Vercel see
-[DEPLOYMENT.md](./DEPLOYMENT.md).
+More detail: [README.md](./README.md) (configuration and local development),
+[SECURITY.md](./SECURITY.md) (security model) and [DEPLOYMENT.md](./DEPLOYMENT.md) (Vercel).
