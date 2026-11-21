@@ -68,8 +68,9 @@ Only the waitlist endpoint accepts input. There are no user accounts, sessions o
   submissions. The API uses no cookies, so there is no session to ride.
 - A generic, consistent error envelope; internal errors return a generic 500 and are logged by
   error type/code only.
-- Rate limiting: 5 requests per 10 minutes per client (sliding window), Upstash Redis in
-  production; IPs are SHA-256-hashed before use as keys. `Retry-After` on 429.
+- Rate limiting: 5 requests per 10 minutes per client (sliding window) on a self-hosted Redis
+  (`REDIS_URL`, atomic Lua script) or Upstash in production; IPs are SHA-256-hashed before use as
+  keys and keys expire with the window. `Retry-After` on 429.
 
 ### Bot and spam protection
 
@@ -161,9 +162,9 @@ consumption of APIs (Turnstile responses validated, timeouts, fail closed).
 
 ## 5. Known limitations
 
-- **In-memory fallback rate limiter**: used when Upstash is not configured or temporarily
-  unavailable. It is per-instance and therefore weaker in serverless/multi-instance environments.
-  Configure Upstash in production.
+- **In-memory fallback rate limiter**: used when no Redis store is configured or the configured
+  one is temporarily unavailable. It is per-instance and therefore weaker in serverless/multi-instance environments.
+  Configure `REDIS_URL` or Upstash in production.
 - **Duplicate responses reveal registration status** (see the threat model). A uniform response
   would trade clarity for people signing up against privacy.
 - **Inline style attributes are allowed by the CSP** (`style-src-attr 'unsafe-inline'`) because the
@@ -188,7 +189,8 @@ Before going live:
 - [ ] Serve exclusively over HTTPS with the canonical `NEXT_PUBLIC_SITE_URL`.
 - [ ] Configure `CLOUDFLARE_TURNSTILE_SITE_KEY` / `CLOUDFLARE_TURNSTILE_SECRET_KEY` (production
       widget restricted to your hostnames).
-- [ ] Configure `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN`.
+- [ ] Configure a rate-limit store: `REDIS_URL` (password-protected, never publicly exposed) or
+      `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN`.
 - [ ] Use a managed PostgreSQL with TLS; run migrations with an owner role (`DIRECT_URL`) and the
       application with the least-privilege role (`DATABASE_URL`).
 - [ ] Store all secrets in the hosting provider's encrypted environment settings or a secret

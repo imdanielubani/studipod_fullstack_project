@@ -69,6 +69,10 @@ Either add **Upstash for Redis** from the Vercel Marketplace, or create a databa
 - **REST URL** → `UPSTASH_REDIS_REST_URL` (must start with `https://`)
 - **REST Token** → `UPSTASH_REDIS_REST_TOKEN`
 
+> **Alternative:** any standard Redis reachable over TLS (e.g. Redis Cloud) can be used instead by
+> setting `REDIS_URL=rediss://…`. On Vercel, Upstash is recommended because its HTTPS API suits
+> short-lived serverless functions.
+
 > Some Marketplace integrations inject these under different names (for example
 > `KV_REST_API_URL` / `KV_REST_API_TOKEN`). The app only reads `UPSTASH_REDIS_REST_URL` and
 > `UPSTASH_REDIS_REST_TOKEN`, so add those two variables with the same values if needed.

@@ -122,7 +122,8 @@ studipod_website/
 
 - **Node.js ≥ 22.12** (Node 24 recommended) and npm 10+
 - **PostgreSQL 17** — locally via Docker (`docker compose`) or any managed provider
-- For production: an **Upstash Redis** database and a **Cloudflare Turnstile** widget
+- For production: a **Redis** server (self-hosted via `REDIS_URL`, or Upstash) and a
+  **Cloudflare Turnstile** widget
 
 ## Getting started
 
@@ -130,7 +131,7 @@ studipod_website/
 cd studipod_website
 npm install                      # also runs `prisma generate`
 cp .env.example .env             # then edit values as needed
-npm run db:up                    # start local PostgreSQL (Docker) on 127.0.0.1:5433
+npm run db:up                    # start local PostgreSQL (:5433) and Redis (:6380) in Docker
 npx prisma migrate deploy        # create the waitlist table
 npm run dev                      # http://localhost:3000
 ```
@@ -144,19 +145,23 @@ limiter is used). Submissions are stored in the local database; inspect them wit
 Copy `.env.example` to `.env`. Never commit `.env`. Anything prefixed `NEXT_PUBLIC_` is visible in
 the browser — never put secrets there.
 
-| Variable                          | Required      | Purpose                                                               |
-| --------------------------------- | ------------- | --------------------------------------------------------------------- |
-| `NEXT_PUBLIC_SITE_URL`            | Production    | Canonical URL for metadata, sitemap, origin and Turnstile host checks |
-| `DATABASE_URL`                    | Yes           | Runtime PostgreSQL connection (pooled URL is fine)                    |
-| `DIRECT_URL`                      | With a pooler | Direct connection used by `prisma migrate`                            |
-| `CLOUDFLARE_TURNSTILE_SITE_KEY`   | Production    | Public Turnstile site key (rendered in the page)                      |
-| `CLOUDFLARE_TURNSTILE_SECRET_KEY` | Production    | **Secret**, server-only; enables server-side token verification       |
-| `UPSTASH_REDIS_REST_URL`          | Production    | Distributed rate limiting (HTTPS URL)                                 |
-| `UPSTASH_REDIS_REST_TOKEN`        | Production    | **Secret**, Upstash REST token                                        |
-| `NEXT_PUBLIC_INSTAGRAM_URL`       | Optional      | Footer link; shown as "Soon" until set                                |
-| `NEXT_PUBLIC_LINKEDIN_URL`        | Optional      | Footer link; shown as "Soon" until set                                |
-| `NEXT_PUBLIC_CONTACT_EMAIL`       | Optional      | Footer "Contact" / "Contact Us" mailto link                           |
-| `NEXT_PUBLIC_FAQ_URL`             | Optional      | Footer "FAQs" link                                                    |
+| Variable                          | Required      | Purpose                                                                         |
+| --------------------------------- | ------------- | ------------------------------------------------------------------------------- |
+| `NEXT_PUBLIC_SITE_URL`            | Production    | Canonical URL for metadata, sitemap, origin and Turnstile host checks           |
+| `DATABASE_URL`                    | Yes           | Runtime PostgreSQL connection (pooled URL is fine)                              |
+| `DIRECT_URL`                      | With a pooler | Direct connection used by `prisma migrate`                                      |
+| `CLOUDFLARE_TURNSTILE_SITE_KEY`   | Production    | Public Turnstile site key (rendered in the page)                                |
+| `CLOUDFLARE_TURNSTILE_SECRET_KEY` | Production    | **Secret**, server-only; enables server-side token verification                 |
+| `REDIS_URL`                       | Production*   | Standard Redis for rate limiting (`redis://` / `rediss://`); preferred on a VPS |
+| `UPSTASH_REDIS_REST_URL`          | Production*   | Distributed rate limiting (HTTPS URL)                                           |
+| `UPSTASH_REDIS_REST_TOKEN`        | Production*   | **Secret**, Upstash REST token                                                  |
+| `NEXT_PUBLIC_INSTAGRAM_URL`       | Optional      | Footer link; shown as "Soon" until set                                          |
+| `NEXT_PUBLIC_LINKEDIN_URL`        | Optional      | Footer link; shown as "Soon" until set                                          |
+| `NEXT_PUBLIC_CONTACT_EMAIL`       | Optional      | Footer "Contact" / "Contact Us" mailto link                                     |
+| `NEXT_PUBLIC_FAQ_URL`             | Optional      | Footer "FAQs" link                                                              |
+
+- Production needs **one** rate-limit store: `REDIS_URL` **or** the two Upstash variables. If both
+  are set, `REDIS_URL` is used.
 
 Server variables are validated with Zod on first use (`src/lib/env.ts`); misconfiguration fails
 fast with the variable **name** only, never its value. `NEXT_PUBLIC_*` values and the Turnstile site
@@ -196,17 +201,27 @@ your secret manager before running it.
 For automated testing Cloudflare publishes dedicated test keys; use them only in non-production
 environments.
 
-## Rate limiting (Upstash Redis)
+## Rate limiting (Redis)
+
+Submissions are limited to 5 per 10 minutes per client (sliding window). Keys are SHA-256 hashes
+of the client IP — raw IPs are never stored. Two stores are supported:
+
+**Standard Redis (`REDIS_URL`)** — best for a VPS (e.g. a Redis service in Dokploy next to the
+app). Set `REDIS_URL=redis://default:<password>@<host>:6379` (`rediss://` for TLS). The limit is
+enforced atomically with a Lua script. Never expose Redis publicly and always set a password.
+Locally, `npm run db:up` starts a Redis on `127.0.0.1:6380`
+(`REDIS_URL=redis://:studipod_local_dev@localhost:6380`).
+
+**Upstash (`UPSTASH_REDIS_REST_*`)** — best for serverless hosts such as Vercel:
 
 1. Create a Redis database at [upstash.com](https://upstash.com) (pick a region near your app).
 2. Copy the **REST URL** and **REST token** into `UPSTASH_REDIS_REST_URL` /
    `UPSTASH_REDIS_REST_TOKEN`.
-3. Submissions are limited to 5 per 10 minutes per client (sliding window). Keys are SHA-256
-   hashes of the client IP — raw IPs are never stored.
 
-Without Upstash an in-memory limiter is used. That is fine locally but **not** in production:
-serverless and multi-instance deployments do not share memory, so a production deployment without
-Upstash logs an error.
+If the configured store is unreachable, the app falls back to its in-memory limiter (and logs a
+warning) so sign-ups keep working. With no store configured, an in-memory limiter is used: fine
+locally but **not** in production, because serverless and multi-instance deployments do not share
+memory. A production deployment without a store logs an error.
 
 ## Testing
 
@@ -240,6 +255,9 @@ Pages are rendered per request because the Content-Security-Policy uses a fresh 
 response.
 
 ## Deployment
+
+Step-by-step guides: [Vercel](./DEPLOYMENT.md) and
+[Hostinger VPS with Dokploy](./DEPLOYMENT-HOSTINGER-DOKPLOY.md).
 
 The app is a standard Next.js Node.js application. A typical setup:
 
