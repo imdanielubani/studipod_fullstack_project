@@ -38,3 +38,33 @@ GRANT SELECT (id) ON TABLE public.waitlist_entries TO studipod_app;
 ALTER ROLE studipod_app SET statement_timeout = '5s';
 ALTER ROLE studipod_app SET idle_in_transaction_session_timeout = '10s';
 ALTER ROLE studipod_app CONNECTION LIMIT 20;
+
+-- -----------------------------------------------------------------------------
+-- Reporting role for the daily waitlist digest email (DIGEST_DATABASE_URL).
+--
+-- It can read registrations (to list them in the digest) and record which
+-- digests were sent. It cannot modify or delete registrations or alter schema.
+-- Use a DIFFERENT long random password from the one above.
+-- -----------------------------------------------------------------------------
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'studipod_reporter') THEN
+    CREATE ROLE studipod_reporter LOGIN PASSWORD 'REPLACE_WITH_A_DIFFERENT_LONG_RANDOM_SECRET';
+  END IF;
+  EXECUTE format('GRANT CONNECT ON DATABASE %I TO studipod_reporter', current_database());
+END
+$$;
+
+REVOKE ALL ON ALL TABLES IN SCHEMA public FROM studipod_reporter;
+REVOKE CREATE ON SCHEMA public FROM studipod_reporter;
+
+GRANT USAGE ON SCHEMA public TO studipod_reporter;
+GRANT USAGE ON TYPE public.waitlist_status TO studipod_reporter;
+
+GRANT SELECT ON TABLE public.waitlist_entries TO studipod_reporter;
+GRANT SELECT, INSERT ON TABLE public.waitlist_digest_runs TO studipod_reporter;
+
+ALTER ROLE studipod_reporter SET statement_timeout = '15s';
+ALTER ROLE studipod_reporter SET idle_in_transaction_session_timeout = '10s';
+ALTER ROLE studipod_reporter CONNECTION LIMIT 3;

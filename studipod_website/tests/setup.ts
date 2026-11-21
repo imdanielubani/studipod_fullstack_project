@@ -13,6 +13,18 @@ delete process.env.CLOUDFLARE_TURNSTILE_SITE_KEY;
 delete process.env.UPSTASH_REDIS_REST_URL;
 delete process.env.UPSTASH_REDIS_REST_TOKEN;
 delete process.env.REDIS_URL;
+for (const key of [
+  "SMTP_HOST",
+  "SMTP_PORT",
+  "SMTP_USER",
+  "SMTP_PASSWORD",
+  "SMTP_FROM",
+  "WAITLIST_DIGEST_TO",
+  "CRON_SECRET",
+  "DIGEST_DATABASE_URL",
+]) {
+  delete process.env[key];
+}
 
 beforeEach(() => {
   // Keep test output readable; structured server logs are asserted where relevant.

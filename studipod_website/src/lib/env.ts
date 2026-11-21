@@ -35,6 +35,28 @@ const serverEnvSchema = z.object({
   ),
   // Cloudflare Turnstile. The secret key never leaves the server.
   CLOUDFLARE_TURNSTILE_SECRET_KEY: optionalString,
+
+  // --- Daily waitlist digest email (all optional; the digest is off until set) ---
+  SMTP_HOST: optionalString,
+  SMTP_PORT: optionalString.refine(
+    (value) => value === undefined || (/^\d+$/.test(value) && Number(value) <= 65535),
+    { error: "SMTP_PORT must be a port number." },
+  ),
+  SMTP_USER: optionalString,
+  SMTP_PASSWORD: optionalString,
+  /** Sender, e.g. "StudiPod Waitlist <hello@studipod.com>" (must be the SMTP mailbox). */
+  SMTP_FROM: optionalString,
+  /** Digest recipient; defaults to the public contact address. */
+  WAITLIST_DIGEST_TO: optionalString,
+  /** Shared secret required to trigger the digest endpoint (32+ characters). */
+  CRON_SECRET: optionalString.refine((value) => value === undefined || value.length >= 32, {
+    error: "CRON_SECRET must be at least 32 characters.",
+  }),
+  /** Read-only reporting connection for the digest; falls back to DATABASE_URL. */
+  DIGEST_DATABASE_URL: optionalString.refine(
+    (value) => value === undefined || /^postgres(ql)?:\/\//.test(value),
+    { error: "DIGEST_DATABASE_URL must be a PostgreSQL connection string." },
+  ),
 });
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>;

@@ -38,3 +38,19 @@ model WaitlistEntry {
   @@index([createdAt], map: "waitlist_entries_created_at_idx")
   @@map("waitlist_entries")
 }
+
+/// One successfully sent waitlist digest email. The next digest covers
+/// registrations created after the latest `periodEnd`. Holds counts and
+/// timestamps only — no personal data.
+model WaitlistDigestRun {
+  id          String    @id @default(uuid(7)) @db.Uuid
+  /// Exclusive lower bound (null for the very first digest).
+  periodStart DateTime? @map("period_start") @db.Timestamptz(3)
+  /// Inclusive upper bound.
+  periodEnd   DateTime  @map("period_end") @db.Timestamptz(3)
+  entryCount  Int       @map("entry_count")
+  sentAt      DateTime  @default(now()) @map("sent_at") @db.Timestamptz(3)
+
+  @@index([periodEnd], map: "waitlist_digest_runs_period_end_idx")
+  @@map("waitlist_digest_runs")
+}
