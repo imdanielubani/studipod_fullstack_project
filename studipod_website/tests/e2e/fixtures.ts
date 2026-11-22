@@ -5,7 +5,17 @@ import { test as base, expect, type Page } from "@playwright/test";
  * uncaught exception. Content-Security-Policy violations are reported as
  * console errors, so this also proves the CSP does not block the site itself.
  */
-export const test = base.extend<{ consoleErrors: string[] }>({
+export const test = base.extend<{ consoleErrors: string[]; hasCookieChoice: boolean }>({
+  /** Most tests start as a returning visitor so the cookie banner is not in the way. */
+  hasCookieChoice: [true, { option: true }],
+  context: async ({ context, baseURL, hasCookieChoice }, provide) => {
+    if (hasCookieChoice) {
+      await context.addCookies([
+        { name: "studipod_cookie_consent", value: "rejected", url: baseURL },
+      ]);
+    }
+    await provide(context);
+  },
   consoleErrors: [
     async ({ page }, use) => {
       const errors: string[] = [];

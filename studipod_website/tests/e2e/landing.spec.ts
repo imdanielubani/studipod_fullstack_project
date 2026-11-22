@@ -25,6 +25,16 @@ test.describe("landing page", () => {
     await expect(page.getByText("© 2026 StudiPod. All rights reserved.")).toBeAttached();
   });
 
+  test("hero image loads with descriptive alternative text", async ({ page }) => {
+    await gotoHome(page);
+    const heroImage = page.getByRole("img", { name: /live StudiPod video call/i });
+
+    await expect(heroImage).toBeVisible();
+    await expect
+      .poll(() => heroImage.evaluate((image: HTMLImageElement) => image.naturalWidth))
+      .toBeGreaterThan(0);
+  });
+
   test("hero CTA scrolls to the waitlist form", async ({ page }) => {
     await gotoHome(page);
     await page.getByRole("link", { name: "Join the Waitlist" }).click();
@@ -105,11 +115,18 @@ test.describe("security", () => {
 });
 
 test.describe("secondary pages", () => {
-  test("footer legal links open clearly-marked placeholder pages", async ({ page }) => {
+  test("footer legal links are placeholders that stay on the page", async ({ page }) => {
     await gotoHome(page);
-    await page.getByRole("link", { name: "Privacy Policy" }).click();
+    for (const name of ["Privacy Policy", "Terms of Use"]) {
+      const link = page.getByRole("link", { name });
+      await expect(link).toHaveAttribute("href", "#");
+      await link.click();
+      await expect(page).toHaveURL(/\/#$/);
+    }
+  });
 
-    await expect(page).toHaveURL(/\/privacy-policy$/);
+  test("legal routes are clearly-marked placeholder pages", async ({ page }) => {
+    await page.goto("/privacy-policy");
     await expect(page.getByRole("heading", { level: 1, name: "Privacy Policy" })).toBeVisible();
     await expect(page.getByText("Placeholder — awaiting approved content")).toBeVisible();
 
