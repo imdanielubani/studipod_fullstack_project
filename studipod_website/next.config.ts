@@ -9,6 +9,8 @@ const nextConfig: NextConfig = {
   productionBrowserSourceMaps: false,
   images: {
     formats: ["image/avif", "image/webp"],
+    // 75 is the default; 90 is used by the hero image, which contains small text.
+    qualities: [75, 90],
   },
   async headers() {
     return [
