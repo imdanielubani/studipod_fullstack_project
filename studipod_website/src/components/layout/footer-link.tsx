@@ -8,8 +8,21 @@ interface FooterLinkProps {
   icon?: ReactNode;
 }
 
-const linkClasses =
+export const footerLinkClasses =
   "group/link inline-flex items-center gap-2.5 whitespace-nowrap rounded-sm text-[0.9375rem] text-ink-muted transition-colors duration-(--duration-base) hover:text-ink";
+
+/** Link text with the animated underline shared by every footer control. */
+export function FooterLinkLabel({ children }: { children: ReactNode }) {
+  return (
+    <span className="relative">
+      {children}
+      <span
+        aria-hidden="true"
+        className="absolute -bottom-0.5 left-0 h-px w-full origin-left scale-x-0 bg-current transition-transform duration-(--duration-base) ease-(--ease-out-expo) group-hover/link:scale-x-100"
+      />
+    </span>
+  );
+}
 
 function isExternal(href: string): boolean {
   return /^https?:\/\//.test(href);
@@ -31,35 +44,30 @@ export function FooterLink({ href, children, icon }: FooterLinkProps) {
   const content = (
     <>
       {icon}
-      <span className="relative">
-        {children}
-        <span
-          aria-hidden="true"
-          className="absolute -bottom-0.5 left-0 h-px w-full origin-left scale-x-0 bg-current transition-transform duration-(--duration-base) ease-(--ease-out-expo) group-hover/link:scale-x-100"
-        />
-      </span>
+      <FooterLinkLabel>{children}</FooterLinkLabel>
     </>
   );
 
   if (isExternal(href)) {
     return (
-      <a href={href} target="_blank" rel="noopener noreferrer" className={linkClasses}>
+      <a href={href} target="_blank" rel="noopener noreferrer" className={footerLinkClasses}>
         {content}
         <span className="sr-only">(opens in a new tab)</span>
       </a>
     );
   }
 
-  if (href.startsWith("mailto:")) {
+  // Plain anchors: mail links, and "#" placeholders (the router would drop the empty hash).
+  if (href.startsWith("mailto:") || href === "#") {
     return (
-      <a href={href} className={linkClasses}>
+      <a href={href} className={footerLinkClasses}>
         {content}
       </a>
     );
   }
 
   return (
-    <Link href={href} className={linkClasses}>
+    <Link href={href} className={footerLinkClasses}>
       {content}
     </Link>
   );

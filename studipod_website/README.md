@@ -93,6 +93,7 @@ studipod_website/
 │   │   └── globals.css        # Design tokens
 │   ├── components/
 │   │   ├── layout/            # Navbar, mobile menu, footer, legal shell
+│   │   ├── cookies/           # Consent banner + footer settings button
 │   │   ├── sections/          # Hero, Big Idea, Pod Experience, Waitlist
 │   │   ├── features/          # Feature card + illustrations
 │   │   ├── waitlist/          # Form + success state

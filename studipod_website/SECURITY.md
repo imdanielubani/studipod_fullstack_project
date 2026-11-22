@@ -28,7 +28,9 @@ Browser ──HTTPS──▶ Next.js (Node.js)
                                                        └─ least-privilege role, CHECK constraints
 ```
 
-Only the waitlist endpoint accepts input. There are no user accounts, sessions or cookies.
+Only the waitlist endpoint accepts input. There are no user accounts or sessions. The only cookie
+the site sets is `studipod_cookie_consent` (first-party, `SameSite=Lax`, `Secure` over HTTPS,
+180 days), which remembers the visitor's cookie choice and is never read by the API.
 
 ## 2. Implemented protections
 

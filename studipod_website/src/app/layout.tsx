@@ -3,6 +3,7 @@ import { Instrument_Serif, Inter_Tight } from "next/font/google";
 import { headers } from "next/headers";
 import type { ReactNode } from "react";
 import { MotionProvider } from "@/components/animations/motion-provider";
+import { CookieConsent } from "@/components/cookies/cookie-consent";
 import { StructuredData } from "@/components/seo/structured-data";
 import { siteConfig } from "@/config/site";
 import "./globals.css";
@@ -92,6 +93,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
           Skip to content
         </a>
         <MotionProvider>{children}</MotionProvider>
+        <CookieConsent />
       </body>
     </html>
   );

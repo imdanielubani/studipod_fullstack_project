@@ -1,4 +1,5 @@
 import { Mail } from "lucide-react";
+import { CookieSettingsButton } from "@/components/cookies/cookie-settings-button";
 import { FooterLink } from "@/components/layout/footer-link";
 import { InstagramIcon, LinkedInIcon } from "@/components/layout/social-icons";
 import { Container } from "@/components/ui/container";
@@ -24,9 +25,10 @@ const socialLinks = [
   { label: "Contact Us", href: contactHref, Icon: Mail },
 ] as const;
 
+/** Placeholder targets until the approved legal content is published. */
 const legalLinks = [
-  { label: "Privacy Policy", href: "/privacy-policy" },
-  { label: "Terms of Use", href: "/terms" },
+  { label: "Privacy Policy", href: "#" },
+  { label: "Terms of Use", href: "#" },
 ] as const;
 
 export function Footer() {
@@ -82,10 +84,13 @@ export function Footer() {
           <p>© {siteConfig.copyrightYear} StudiPod. All rights reserved.</p>
           <ul className="flex flex-wrap gap-x-6 gap-y-2">
             {legalLinks.map((link) => (
-              <li key={link.href}>
+              <li key={link.label}>
                 <FooterLink href={link.href}>{link.label}</FooterLink>
               </li>
             ))}
+            <li>
+              <CookieSettingsButton />
+            </li>
           </ul>
         </div>
       </Container>
