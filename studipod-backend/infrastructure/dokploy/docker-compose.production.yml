@@ -1,0 +1,228 @@
+# Studipod backend: production / staging stack for Dokploy (Docker Compose app).
+#
+# Dokploy setup (see docs/deployment/infrastructure-and-deployment.md):
+#   - Source: this repository, compose path studipod-backend/infrastructure/dokploy/docker-compose.production.yml
+#   - Environment: every variable from .env.production.example, entered in Dokploy
+#   - Domains: api.<domain> -> service "api" port 3000, ws.<domain> -> service "websocket" port 3001
+#     (either through the Dokploy Domains UI, or the Traefik labels below)
+#
+# Network model:
+#   internal        private bridge network, no outbound route needed for data services.
+#                   PostgreSQL, PgBouncer and Valkey are attached ONLY here and publish no ports.
+#   dokploy-network Dokploy's Traefik network. Only HTTP-facing services join it
+#                   (it also gives them outbound internet access for Stripe, R2, etc.).
+#   egress          plain bridge giving the worker outbound internet access without
+#                   attaching it to the Traefik network.
+#
+# Profiles: "realtime" (WebSocket gateway) and "workers" (BullMQ worker) stay off
+# until their entrypoints (dist/websocket.main.js, dist/worker.main.js) exist.
+# Remove the profiles line for a service to enable it.
+
+name: studipod
+
+x-backend: &backend
+  image: ${BACKEND_IMAGE:-studipod-backend:latest}
+  build:
+    context: ../../..
+    dockerfile: studipod-backend/Dockerfile
+    target: runtime
+  restart: unless-stopped
+  env_file: .env
+  read_only: true
+  tmpfs:
+    - /tmp
+  security_opt:
+    - no-new-privileges:true
+  cap_drop:
+    - ALL
+  depends_on:
+    migrate:
+      condition: service_completed_successfully
+    pgbouncer:
+      condition: service_started
+    valkey:
+      condition: service_healthy
+  logging:
+    driver: json-file
+    options:
+      max-size: 20m
+      max-file: '5'
+
+services:
+  migrate:
+    build:
+      context: ../../..
+      dockerfile: studipod-backend/Dockerfile
+      target: migrator
+    env_file: .env
+    restart: 'no'
+    networks: [internal]
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  api:
+    <<: *backend
+    command: ['node', 'dist/main.js']
+    environment:
+      PORT: 3000
+    networks: [internal, dokploy-network]
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 768M
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=dokploy-network
+      - traefik.http.routers.studipod-api.rule=Host(`${API_DOMAIN:?API_DOMAIN is required}`)
+      - traefik.http.routers.studipod-api.entrypoints=websecure
+      - traefik.http.routers.studipod-api.tls.certresolver=letsencrypt
+      - traefik.http.services.studipod-api.loadbalancer.server.port=3000
+
+  websocket:
+    <<: *backend
+    profiles: [realtime]
+    command: ['node', 'dist/websocket.main.js']
+    environment:
+      PORT: 3001
+    networks: [internal, dokploy-network]
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=dokploy-network
+      - traefik.http.routers.studipod-ws.rule=Host(`${WS_DOMAIN:?WS_DOMAIN is required}`)
+      - traefik.http.routers.studipod-ws.entrypoints=websecure
+      - traefik.http.routers.studipod-ws.tls.certresolver=letsencrypt
+      - traefik.http.services.studipod-ws.loadbalancer.server.port=3001
+      # Socket.IO long-polling fallback needs sticky sessions across replicas.
+      - traefik.http.services.studipod-ws.loadbalancer.sticky.cookie=true
+      - traefik.http.services.studipod-ws.loadbalancer.sticky.cookie.name=studipod_ws
+      - traefik.http.services.studipod-ws.loadbalancer.sticky.cookie.secure=true
+      - traefik.http.services.studipod-ws.loadbalancer.sticky.cookie.httponly=true
+
+  worker:
+    <<: *backend
+    profiles: [workers]
+    command: ['node', 'dist/worker.main.js']
+    # The worker serves no HTTP traffic; disable the port-based image health check.
+    healthcheck:
+      disable: true
+    networks: [internal, egress]
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 768M
+
+  postgres:
+    image: postgres:18.7-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
+      POSTGRES_INITDB_ARGS: --auth-host=scram-sha-256
+    command:
+      - postgres
+      - -c
+      - max_connections=200
+      - -c
+      - shared_buffers=512MB
+      - -c
+      - log_min_duration_statement=500
+      - -c
+      - log_parameter_max_length=0
+      - -c
+      - log_parameter_max_length_on_error=0
+      - -c
+      - password_encryption=scram-sha-256
+    volumes:
+      - postgres-data:/var/lib/postgresql
+      - ../docker/postgres/init:/docker-entrypoint-initdb.d:ro
+    networks:
+      internal:
+        aliases: [studipod-postgres]
+    security_opt:
+      - no-new-privileges:true
+    shm_size: 256mb
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+
+  pgbouncer:
+    image: edoburu/pgbouncer:v1.26.1-p0
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      LISTEN_PORT: 6432
+      POOL_MODE: transaction
+      AUTH_TYPE: scram-sha-256
+      MAX_CLIENT_CONN: 1000
+      DEFAULT_POOL_SIZE: 40
+      MAX_PREPARED_STATEMENTS: 200
+      SERVER_TLS_SSLMODE: disable
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      internal:
+        aliases: [studipod-pgbouncer]
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+  valkey:
+    image: valkey/valkey:9.2-alpine
+    restart: unless-stopped
+    # The password is passed on stdin, so it never appears in the process arguments.
+    entrypoint:
+      [
+        'sh',
+        '-c',
+        'printf "requirepass %s\n" "$$REDIS_PASSWORD" | exec valkey-server /usr/local/etc/valkey/valkey.conf -',
+      ]
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+      REDISCLI_AUTH: ${REDIS_PASSWORD}
+    volumes:
+      - valkey-data:/data
+      - ../docker/valkey/valkey.conf:/usr/local/etc/valkey/valkey.conf:ro
+    networks:
+      internal:
+        aliases: [studipod-valkey]
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ['CMD-SHELL', 'valkey-cli ping | grep PONG']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+
+networks:
+  internal:
+    driver: bridge
+    internal: true
+  egress:
+    driver: bridge
+  dokploy-network:
+    external: true
+
+volumes:
+  postgres-data:
+  valkey-data:
