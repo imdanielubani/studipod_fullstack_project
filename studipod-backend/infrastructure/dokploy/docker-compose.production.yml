@@ -23,8 +23,8 @@ name: studipod
 x-backend: &backend
   image: ${BACKEND_IMAGE:-studipod-backend:latest}
   build:
-    context: ../../..
-    dockerfile: studipod-backend/Dockerfile
+    context: ../..
+    dockerfile: Dockerfile
     target: runtime
   restart: unless-stopped
   env_file: .env
@@ -51,8 +51,8 @@ x-backend: &backend
 services:
   migrate:
     build:
-      context: ../../..
-      dockerfile: studipod-backend/Dockerfile
+      context: ../..
+      dockerfile: Dockerfile
       target: migrator
     env_file: .env
     restart: 'no'

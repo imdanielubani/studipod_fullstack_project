@@ -31,4 +31,4 @@ COOKIE_SECRET=${cookie}
 EOF
 
 echo
-echo "# VAPID keys for Web Push: run  pnpm --filter @studipod/backend exec web-push generate-vapid-keys" >&2
+echo "# VAPID keys for Web Push: run  pnpm exec web-push generate-vapid-keys" >&2

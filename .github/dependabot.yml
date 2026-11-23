@@ -1,18 +1,7 @@
 version: 2
 updates:
   - package-ecosystem: npm
-    directory: /studipod_website
-    schedule:
-      interval: weekly
-    open-pull-requests-limit: 5
-    groups:
-      minor-and-patch:
-        update-types: [minor, patch]
-    labels: [dependencies]
-
-  # pnpm workspace (backend, shared packages, and future webapp/admin dashboard).
-  - package-ecosystem: npm
-    directory: /
+    directory: /studipod-backend
     schedule:
       interval: weekly
     open-pull-requests-limit: 5

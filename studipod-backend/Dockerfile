@@ -2,10 +2,9 @@
 #
 # Studipod backend image.
 #
-# Build context MUST be the monorepo root, because the pnpm lockfile and the
-# shared workspace packages live there:
+# Build context is the studipod-backend folder:
 #
-#   docker build -f studipod-backend/Dockerfile -t studipod-backend .
+#   docker build -t studipod-backend studipod-backend
 #
 # Targets:
 #   runtime  (default) slim production image for the API, WebSocket gateway and
@@ -22,33 +21,30 @@ ENV PNPM_HOME=/pnpm \
     PATH=/pnpm:$PATH \
     CI=true
 RUN npm install --global --no-fund --no-audit pnpm@${PNPM_VERSION}
-WORKDIR /repo
+WORKDIR /repo/studipod-backend
 
 # -----------------------------------------------------------------------------
 # Install all dependencies (including dev) from the lockfile only.
 FROM base AS deps
-COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
-COPY packages/tsconfig/package.json packages/tsconfig/
-COPY packages/eslint-config/package.json packages/eslint-config/
-COPY studipod-backend/package.json studipod-backend/
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
-    pnpm install --frozen-lockfile --filter "@studipod/backend..."
+    pnpm install --frozen-lockfile
 
 # -----------------------------------------------------------------------------
 FROM deps AS build
-COPY packages/ packages/
-COPY studipod-backend/ studipod-backend/
-WORKDIR /repo/studipod-backend
+COPY . .
 RUN pnpm exec prisma generate \
  && pnpm run build
 # Self-contained production bundle: dist + production node_modules only.
 RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
-    pnpm --filter @studipod/backend deploy --prod --legacy /out \
- && cp -r dist /out/dist
+    mkdir /out \
+ && cp package.json pnpm-lock.yaml pnpm-workspace.yaml /out/ \
+ && cd /out \
+ && pnpm install --prod --frozen-lockfile \
+ && cp -r /repo/studipod-backend/dist /out/dist
 
 # -----------------------------------------------------------------------------
 FROM build AS migrator
-WORKDIR /repo/studipod-backend
 USER node
 CMD ["pnpm", "exec", "prisma", "migrate", "deploy"]
 

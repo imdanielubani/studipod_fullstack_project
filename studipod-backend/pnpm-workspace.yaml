@@ -1,12 +1,5 @@
-# Studipod pnpm workspace.
-# Each application is a top-level folder; shared tooling lives under packages/.
-# studipod-webapp and studipod-admin-dashboard are picked up automatically once
-# they contain a package.json, so adding them does not change this file.
-packages:
-  - studipod-backend
-  - studipod-webapp
-  - studipod-admin-dashboard
-  - packages/*
+# pnpm settings for the backend (pnpm 12 reads these from this file, not .npmrc).
+# The backend is a single package, so no workspace members are listed.
 
 # Refuse installs on unsupported Node.js versions (see "engines" in package.json).
 engineStrict: true
