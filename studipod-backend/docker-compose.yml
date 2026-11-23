@@ -1,0 +1,99 @@
+# Local development infrastructure for the Studipod backend.
+#
+#   cp .env.development.example .env
+#   docker compose up -d                       # PostgreSQL + Valkey
+#   docker compose --profile pooling up -d     # + PgBouncer (to test pooled connections)
+#   docker compose --profile app up -d --build # + the API container itself
+#
+# Every port is bound to 127.0.0.1 so nothing is reachable from the network.
+# Host ports can be changed in .env (POSTGRES_HOST_PORT, REDIS_HOST_PORT,
+# PGBOUNCER_HOST_PORT) if a local PostgreSQL or Redis already uses the defaults.
+# Production uses infrastructure/dokploy/docker-compose.production.yml instead.
+
+name: studipod-dev
+
+services:
+  postgres:
+    image: postgres:18.7-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER in .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:?set POSTGRES_DB in .env}
+      POSTGRES_INITDB_ARGS: --auth-host=scram-sha-256
+    ports:
+      - '127.0.0.1:${POSTGRES_HOST_PORT:-5432}:5432'
+    volumes:
+      # PostgreSQL 18+ images keep data under /var/lib/postgresql/<major>/.
+      - postgres-data:/var/lib/postgresql
+      - ./infrastructure/docker/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  valkey:
+    image: valkey/valkey:9.2-alpine
+    restart: unless-stopped
+    # The password is passed on stdin, so it never appears in the process arguments.
+    entrypoint:
+      [
+        'sh',
+        '-c',
+        'printf "requirepass %s\n" "$$REDIS_PASSWORD" | exec valkey-server /usr/local/etc/valkey/valkey.conf -',
+      ]
+    ports:
+      - '127.0.0.1:${REDIS_HOST_PORT:-6379}:6379'
+    volumes:
+      - valkey-data:/data
+      - ./infrastructure/docker/valkey/valkey.conf:/usr/local/etc/valkey/valkey.conf:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'valkey-cli ping | grep PONG']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?set REDIS_PASSWORD in .env}
+      REDISCLI_AUTH: ${REDIS_PASSWORD}
+
+  pgbouncer:
+    profiles: [pooling]
+    image: edoburu/pgbouncer:v1.26.1-p0
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      POOL_MODE: transaction
+      AUTH_TYPE: scram-sha-256
+      MAX_CLIENT_CONN: 500
+      DEFAULT_POOL_SIZE: 20
+      MAX_PREPARED_STATEMENTS: 100
+    ports:
+      - '127.0.0.1:${PGBOUNCER_HOST_PORT:-6432}:5432'
+
+  api:
+    profiles: [app]
+    build:
+      context: ..
+      dockerfile: studipod-backend/Dockerfile
+      target: runtime
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      APP_ENV: development
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
+      REDIS_URL: redis://:${REDIS_PASSWORD}@valkey:6379/0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy
+    ports:
+      - '127.0.0.1:${PORT:-3000}:3000'
+
+volumes:
+  postgres-data:
+  valkey-data:

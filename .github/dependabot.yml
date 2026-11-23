@@ -10,6 +10,35 @@ updates:
         update-types: [minor, patch]
     labels: [dependencies]
 
+  # pnpm workspace (backend, shared packages, and future webapp/admin dashboard).
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      nestjs:
+        patterns: ['@nestjs/*']
+      prisma:
+        patterns: ['prisma', '@prisma/*']
+      minor-and-patch:
+        update-types: [minor, patch]
+    labels: [dependencies, backend]
+
+  - package-ecosystem: docker
+    directory: /studipod-backend
+    schedule:
+      interval: weekly
+    labels: [dependencies, backend, docker]
+
+  - package-ecosystem: docker-compose
+    directories:
+      - /studipod-backend
+      - /studipod-backend/infrastructure/dokploy
+    schedule:
+      interval: weekly
+    labels: [dependencies, backend, docker]
+
   - package-ecosystem: github-actions
     directory: /
     schedule:

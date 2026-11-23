@@ -1,0 +1,23 @@
+# Applies to `docker build -f studipod-backend/Dockerfile .` (context = repo root).
+# Allow-list: ignore everything, then re-include what the backend image needs.
+*
+!package.json
+!pnpm-lock.yaml
+!pnpm-workspace.yaml
+!packages/
+!studipod-backend/
+
+# Never send these into the build context.
+**/node_modules
+**/dist
+**/coverage
+**/reports
+**/.env
+**/.env.*
+!**/.env*.example
+**/*.pem
+**/*.key
+studipod-backend/src/database/prisma/generated
+studipod-backend/docs
+studipod-backend/infrastructure
+studipod-backend/test
