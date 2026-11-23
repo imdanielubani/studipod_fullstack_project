@@ -93,16 +93,18 @@ Registered with `@fastify/helmet`:
 
 ## Dependency security
 
-- **(configured)** Exact versions and a single lockfile; installs in CI use `--frozen-lockfile`.
+- **(configured)** Exact versions and a single lockfile. CI installs, once added, use `--frozen-lockfile`.
 - **(configured)** pnpm blocks dependency install scripts except an explicit allowlist (`allowBuilds` in `pnpm-workspace.yaml`); telemetry install scripts are denied.
-- **(configured)** CI runs `pnpm audit --audit-level=high`; the existing Dependency Review workflow blocks pull requests that add high-severity vulnerabilities; Dependabot proposes weekly updates; CodeQL scans the repository.
+- Run `pnpm audit --audit-level=high` before each release. No CI, Dependabot or CodeQL is configured in the repository yet; when CI is added it runs the audit, CodeQL and dependency review on every pull request.
 
-## GitHub Actions security
+## GitHub Actions security (when CI is added)
 
-- **(configured)** Workflows declare `permissions: contents: read` by default; jobs request more only when needed.
-- **(configured)** `actions/checkout` uses `persist-credentials: false`.
-- **(configured)** No secrets are needed for CI; database and Redis are ephemeral service containers with throwaway passwords.
-- `pull_request_target` is not used. **(configured)** Actions in `backend-ci.yml` are pinned to full commit SHAs (with the version in a comment); Dependabot updates the pins.
+No workflows exist yet. Workflows added to `.github/workflows/` at the repository root must follow these rules:
+
+- Declare `permissions: contents: read` by default; jobs request more only when needed.
+- `actions/checkout` uses `persist-credentials: false`.
+- No secrets are needed for CI; database and Redis are ephemeral service containers with throwaway passwords.
+- `pull_request_target` is not used. Actions are pinned to full commit SHAs, with the version in a comment.
 - Branch protection on `main`: required status checks, at least one review, no force pushes.
 
 ## Environment separation
