@@ -1,5 +1,5 @@
 # Studipod backend: continuous integration.
-# Runs only when the backend, the shared packages or the workspace configuration change.
+# Runs only when the backend or this workflow changes.
 name: Backend CI
 
 on:
@@ -7,18 +7,10 @@ on:
     branches: [main]
     paths:
       - studipod-backend/**
-      - packages/**
-      - package.json
-      - pnpm-lock.yaml
-      - pnpm-workspace.yaml
       - .github/workflows/backend-ci.yml
   pull_request:
     paths:
       - studipod-backend/**
-      - packages/**
-      - package.json
-      - pnpm-lock.yaml
-      - pnpm-workspace.yaml
       - .github/workflows/backend-ci.yml
   workflow_dispatch:
 
@@ -46,10 +38,13 @@ jobs:
         with:
           persist-credentials: false
       - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+        with:
+          package_json_file: studipod-backend/package.json
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
+          cache-dependency-path: studipod-backend/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
       - name: Environment file check
         run: bash infrastructure/scripts/check-env-files.sh
@@ -98,10 +93,13 @@ jobs:
         with:
           persist-credentials: false
       - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+        with:
+          package_json_file: studipod-backend/package.json
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
+          cache-dependency-path: studipod-backend/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
       - run: pnpm run prisma:generate
       - name: Apply migrations
@@ -118,6 +116,8 @@ jobs:
         with:
           persist-credentials: false
       - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+        with:
+          package_json_file: studipod-backend/package.json
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: ${{ env.NODE_VERSION }}
@@ -137,7 +137,7 @@ jobs:
       - name: Build runtime image
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
-          context: .
+          context: studipod-backend
           file: studipod-backend/Dockerfile
           target: runtime
           push: false

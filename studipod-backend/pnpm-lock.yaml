@@ -179,32 +179,6 @@ overrides:
 importers:
 
   .:
-    devDependencies:
-      prettier:
-        specifier: 3.10.1
-        version: 3.10.1
-
-  packages/eslint-config:
-    dependencies:
-      '@eslint/js':
-        specifier: 10.0.1
-        version: 10.0.1(eslint@10.15.0(jiti@2.7.0)(supports-color@8.1.1))
-      eslint:
-        specifier: ^10.0.0
-        version: 10.15.0(jiti@2.7.0)(supports-color@8.1.1)
-      eslint-config-prettier:
-        specifier: 10.1.8
-        version: 10.1.8(eslint@10.15.0(jiti@2.7.0)(supports-color@8.1.1))
-      globals:
-        specifier: 17.14.0
-        version: 17.14.0
-      typescript-eslint:
-        specifier: 8.73.0
-        version: 8.73.0(eslint@10.15.0(jiti@2.7.0)(supports-color@8.1.1))(supports-color@8.1.1)(typescript@6.0.3)
-
-  packages/tsconfig: {}
-
-  studipod-backend:
     dependencies:
       '@aws-sdk/client-s3':
         specifier: 3.1175.0
@@ -330,6 +304,9 @@ importers:
         specifier: 4.0.0
         version: 4.0.0(supports-color@8.1.1)
     devDependencies:
+      '@eslint/js':
+        specifier: 10.0.1
+        version: 10.0.1(eslint@10.15.0(jiti@2.7.0)(supports-color@8.1.1))
       '@nestjs/cli':
         specifier: 12.0.15
         version: 12.0.15(@types/node@22.20.5)(prettier@3.10.1)
@@ -339,12 +316,6 @@ importers:
       '@nestjs/testing':
         specifier: 12.6.0
         version: 12.6.0(@nestjs/common@12.6.0(class-transformer@0.5.1)(class-validator@0.15.1)(reflect-metadata@0.2.2)(rxjs@7.8.2)(supports-color@8.1.1))(@nestjs/core@12.6.0)
-      '@studipod/eslint-config':
-        specifier: workspace:*
-        version: link:../packages/eslint-config
-      '@studipod/tsconfig':
-        specifier: workspace:*
-        version: link:../packages/tsconfig
       '@types/jest':
         specifier: 30.0.0
         version: 30.0.0
@@ -375,6 +346,12 @@ importers:
       eslint:
         specifier: 10.15.0
         version: 10.15.0(jiti@2.7.0)(supports-color@8.1.1)
+      eslint-config-prettier:
+        specifier: 10.1.8
+        version: 10.1.8(eslint@10.15.0(jiti@2.7.0)(supports-color@8.1.1))
+      globals:
+        specifier: 17.14.0
+        version: 17.14.0
       jest:
         specifier: 30.5.2
         version: 30.5.2(@types/node@22.20.5)(supports-color@8.1.1)
@@ -402,6 +379,9 @@ importers:
       typescript:
         specifier: 6.0.3
         version: 6.0.3
+      typescript-eslint:
+        specifier: 8.73.0
+        version: 8.73.0(eslint@10.15.0(jiti@2.7.0)(supports-color@8.1.1))(supports-color@8.1.1)(typescript@6.0.3)
 
 packages:
 

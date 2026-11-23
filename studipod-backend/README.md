@@ -13,8 +13,8 @@ Node.js 22 · NestJS 12 on Fastify · TypeScript 6 · PostgreSQL 18 + Prisma 7 �
 ## Quick start
 
 ```bash
-pnpm install                                   # from the repository root
 cd studipod-backend
+pnpm install
 cp .env.development.example .env
 pnpm infra:up                                  # PostgreSQL + Valkey (localhost only)
 pnpm prisma:generate
@@ -38,7 +38,7 @@ infrastructure/ docker/, dokploy/, cloudflare/, monitoring/, backups/, scripts/
 | Topic                         | Document                                                                                             |
 | ----------------------------- | ---------------------------------------------------------------------------------------------------- |
 | Backend architecture          | [docs/architecture/backend-architecture.md](docs/architecture/backend-architecture.md)               |
-| Monorepo structure            | [docs/architecture/monorepo-structure.md](docs/architecture/monorepo-structure.md)                   |
+| Repository structure          | [docs/architecture/repository-structure.md](docs/architecture/repository-structure.md)               |
 | API architecture              | [docs/api/api-architecture.md](docs/api/api-architecture.md)                                         |
 | Database plan                 | [docs/database/database-architecture.md](docs/database/database-architecture.md)                     |
 | Authentication plan           | [docs/security/authentication-architecture.md](docs/security/authentication-architecture.md)         |

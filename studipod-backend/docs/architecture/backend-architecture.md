@@ -110,7 +110,7 @@ These rules apply when features are implemented:
 
 ## Related documents
 
-- [Monorepo structure](monorepo-structure.md)
+- [Repository structure](repository-structure.md)
 - [API architecture](../api/api-architecture.md)
 - [Database architecture](../database/database-architecture.md)
 - [Authentication architecture](../security/authentication-architecture.md)
