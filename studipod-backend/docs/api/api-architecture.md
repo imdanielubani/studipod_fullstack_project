@@ -74,5 +74,5 @@ Errors use one shape everywhere (produced by a global exception filter):
 
 ## Contract for the clients
 
-- The OpenAPI document is the contract. A generated, typed client package (`packages/api-client`) is planned for the webapp and admin dashboard.
+- The OpenAPI document is the contract. A typed client generated from it is planned for the webapp and admin dashboard.
 - Breaking changes go to `/api/v2`; `v1` keeps working until both clients have migrated.

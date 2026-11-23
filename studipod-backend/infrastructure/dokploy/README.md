@@ -11,7 +11,7 @@
 
 ## Release order
 
-1. Dokploy builds the images from the Dockerfile (context: repository root).
+1. Dokploy builds the images from the Dockerfile (context: the `studipod-backend` folder).
 2. `migrate` runs `prisma migrate deploy` against PostgreSQL directly and exits.
 3. `api` starts only after `migrate` completed successfully.
 

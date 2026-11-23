@@ -17,7 +17,7 @@ Not used for the initial deployment: DigitalOcean, AWS, Vercel, Supabase, Kubern
 | File                                                   | Purpose                                             |
 | ------------------------------------------------------ | --------------------------------------------------- |
 | `Dockerfile`                                           | Multi-stage image; targets `runtime` and `migrator` |
-| `Dockerfile.dockerignore`                              | Build-context allowlist (context is the repo root)  |
+| `.dockerignore`                                        | Keeps secrets and non-runtime files out of builds   |
 | `docker-compose.yml`                                   | Local development infrastructure                    |
 | `infrastructure/dokploy/docker-compose.production.yml` | Staging and production stack                        |
 | `infrastructure/docker/postgres/init/`                 | First-boot PostgreSQL extensions                    |
@@ -29,7 +29,7 @@ Not used for the initial deployment: DigitalOcean, AWS, Vercel, Supabase, Kubern
 
 ## Image
 
-- Built from the **repository root**: `docker build -f studipod-backend/Dockerfile -t studipod-backend .`
+- Built from the **`studipod-backend` folder**: `docker build -t studipod-backend studipod-backend`
 - One image runs all three processes. The compose `command` selects the entry point (`dist/main.js`, later `dist/websocket.main.js` and `dist/worker.main.js`).
 - The `migrator` target includes the Prisma CLI and runs `prisma migrate deploy`; the slim `runtime` target does not.
 

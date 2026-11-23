@@ -12,10 +12,8 @@
 ## First run
 
 ```bash
-# from the repository root
-pnpm install
-
 cd studipod-backend
+pnpm install
 cp .env.development.example .env       # then replace the change-me secrets:
 ./infrastructure/scripts/generate-secrets.sh
 
@@ -57,7 +55,7 @@ Until features exist, the API starts and listens but serves no routes (requests 
 
 ## Troubleshooting
 
-- **`ERR_PNPM_IGNORED_BUILDS`:** a new dependency wants to run an install script. Review what it does, then add it to `allowBuilds` in the root `pnpm-workspace.yaml` as `true` or `false`.
+- **`ERR_PNPM_IGNORED_BUILDS`:** a new dependency wants to run an install script. Review what it does, then add it to `allowBuilds` in `pnpm-workspace.yaml` as `true` or `false`.
 - **Prisma warns about the Node.js version:** switch to Node 22 (`nvm use`).
 - **Port already in use** (on Windows also `bind: An attempt was made to access a socket in a way forbidden`): a native PostgreSQL or Redis already listens there. Set `POSTGRES_HOST_PORT` / `REDIS_HOST_PORT` in `.env` (for example `5434`) and use the same port in `DATABASE_URL`, `DIRECT_DATABASE_URL` and `REDIS_URL`.
 - **Resetting local data:** `docker compose down -v` deletes the local volumes.
