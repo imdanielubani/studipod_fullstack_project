@@ -1,0 +1,40 @@
+# Studipod pnpm workspace.
+# Each application is a top-level folder; shared tooling lives under packages/.
+# studipod-webapp and studipod-admin-dashboard are picked up automatically once
+# they contain a package.json, so adding them does not change this file.
+packages:
+  - studipod-backend
+  - studipod-webapp
+  - studipod-admin-dashboard
+  - packages/*
+
+# Refuse installs on unsupported Node.js versions (see "engines" in package.json).
+engineStrict: true
+autoInstallPeers: true
+
+# Transitive pins. Remove an entry once its reason no longer applies.
+overrides:
+  # firebase-admin@14 supports Node 22, but the latest @firebase/database
+  # releases require Node >= 24.12. Studipod uses Firebase only for Cloud
+  # Messaging, so pin the last Node 22-compatible Realtime Database packages.
+  '@firebase/database': 1.1.5
+  '@firebase/database-compat': 2.1.7
+  # prisma@7.10.1 pins effect@3.20.0 (GHSA-7589-6fvf-x4pw, high: ReDoS).
+  # 3.22.x is the patched, semver-compatible release line.
+  effect: 3.22.4
+
+# Dependency install scripts are blocked unless listed here.
+# true  = allowed (native addons that need to build or fetch a binary)
+# false = reviewed and denied (telemetry or non-essential postinstall scripts)
+allowBuilds:
+  argon2: true
+  prisma: true
+  '@prisma/engines': true
+  msgpackr-extract: true
+  esbuild: true
+  '@scarf/scarf': false
+  '@firebase/util': false
+  protobufjs: false
+  '@playwright/browser-chromium': false
+  '@parcel/watcher': false
+  unix-dgram: false

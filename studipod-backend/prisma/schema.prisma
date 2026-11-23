@@ -1,0 +1,21 @@
+// Studipod database schema.
+//
+// PLACEHOLDER: no application models are defined yet. Prisma requires this file
+// to exist with a generator and datasource so that `prisma validate`,
+// `prisma generate` and `prisma migrate` can run in CI and locally.
+//
+// The planned domain model is documented in docs/database/database-architecture.md.
+// Models will be added domain by domain, each with its own reviewed migration.
+//
+// The connection URL is supplied by prisma.config.ts (Prisma 7 no longer reads
+// it from this file).
+
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/database/prisma/generated"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
