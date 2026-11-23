@@ -7,7 +7,7 @@ Studipod stores personal data about medical candidates (identity, training backg
 ## Secrets and environment variables
 
 - **(configured)** Real `.env` files are ignored by Git; only `*.example` templates are tracked. `infrastructure/scripts/check-env-files.sh` fails CI if an env file or a recognisable live key is committed.
-- Production and staging secrets are entered in Dokploy only. They never appear in images (`Dockerfile.dockerignore` excludes `.env*`), build arguments, logs or chat tools.
+- Production and staging secrets are entered in Dokploy only. They never appear in images (`.dockerignore` excludes `.env*`), build arguments, logs or chat tools.
 - Every environment (development, staging, production) has unique secrets. Generate them with `infrastructure/scripts/generate-secrets.sh`.
 - Rotate a secret immediately if it may have been exposed; rotate JWT and cookie secrets at least yearly (rotation invalidates sessions by design).
 - Third-party keys use least privilege: R2 tokens scoped to one environment's buckets; Stripe restricted keys where possible; a separate R2 token for backups.

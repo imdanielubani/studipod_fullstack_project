@@ -1,23 +1,17 @@
-# Fallback ignore file. The effective file for the documented build command is Dockerfile.dockerignore.
-# Allow-list: ignore everything, then re-include what the backend image needs.
-*
-!package.json
-!pnpm-lock.yaml
-!pnpm-workspace.yaml
-!packages/
-!studipod-backend/
-
-# Never send these into the build context.
-**/node_modules
-**/dist
-**/coverage
-**/reports
-**/.env
-**/.env.*
-!**/.env*.example
-**/*.pem
-**/*.key
-studipod-backend/src/database/prisma/generated
-studipod-backend/docs
-studipod-backend/infrastructure
-studipod-backend/test
+# Build context for `docker build -t studipod-backend studipod-backend`.
+# Keep dependencies, build output, secrets and non-runtime folders out of the image.
+node_modules
+dist
+coverage
+reports
+.env
+.env.*
+!.env*.example
+*.pem
+*.key
+*.p12
+firebase-service-account*.json
+src/database/prisma/generated
+docs
+infrastructure
+test
