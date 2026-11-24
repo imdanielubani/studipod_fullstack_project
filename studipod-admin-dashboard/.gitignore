@@ -1,0 +1,32 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Next.js build output
+.next/
+out/
+next-env.d.ts
+*.tsbuildinfo
+
+# Test output
+coverage/
+playwright-report/
+test-results/
+blob-report/
+playwright/.cache/
+
+# Environment files: only the *.example templates are tracked.
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# Keys and certificates
+*.pem
+*.key
+*.p12
+
+# Logs and OS files
+*.log
+.DS_Store
+Thumbs.db

@@ -1,0 +1,33 @@
+# Production-like local run of the dashboard image.
+#
+#   cp .env.development.example .env.local   # then adjust if needed
+#   docker compose up --build
+#
+# The dashboard has no database or cache of its own; it calls the Studipod API.
+# Start studipod-backend separately. Production uses Dokploy
+# (see infrastructure/dokploy/README.md).
+
+name: studipod-admin-dashboard
+
+services:
+  admin-dashboard:
+    build:
+      context: .
+      target: runtime
+      args:
+        NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3100}
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3000/api/v1}
+        NEXT_PUBLIC_WS_URL: ${NEXT_PUBLIC_WS_URL:-ws://localhost:3001}
+    image: studipod-admin-dashboard:local
+    environment:
+      PORT: 3000
+      HOSTNAME: 0.0.0.0
+    ports:
+      - '127.0.0.1:3100:3000'
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /app/.next/cache
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
