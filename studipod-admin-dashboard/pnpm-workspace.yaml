@@ -1,0 +1,18 @@
+# pnpm settings for the admin dashboard (pnpm 12 reads these from this file, not .npmrc).
+# The dashboard is a single package, so no workspace members are listed.
+
+# Refuse installs on unsupported Node.js versions (see "engines" in package.json).
+engineStrict: true
+autoInstallPeers: true
+
+# Dependency install scripts are blocked unless listed here.
+# true  = allowed (native addons that need to build or fetch a binary)
+# false = reviewed and denied (telemetry or non-essential postinstall scripts)
+allowBuilds:
+  sharp: true
+  '@tailwindcss/oxide': true
+  unrs-resolver: true
+minimumReleaseAgeExclude:
+  - '@hookform/resolvers@7.0.9'
+  - lucide-react@1.79.0
+  - recharts@3.11.1
