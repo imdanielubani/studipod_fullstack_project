@@ -1,0 +1,17 @@
+{
+  "Metadata": {
+    "applicationName": "Studipod",
+    "description": "Prepare for UK and US medical examinations with the right study partners."
+  },
+  "Common": {
+    "loading": "Loading…",
+    "tryAgain": "Try again"
+  },
+  "Errors": {
+    "unexpectedTitle": "Something went wrong",
+    "unexpectedDescription": "The page could not be displayed. Try again, and contact support if the problem continues.",
+    "reference": "Reference: {digest}",
+    "notFoundTitle": "Page not found",
+    "notFoundDescription": "The page you requested does not exist or has moved."
+  }
+}
