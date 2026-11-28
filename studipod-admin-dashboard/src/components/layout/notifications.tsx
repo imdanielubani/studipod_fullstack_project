@@ -131,7 +131,7 @@ export function NotificationCenter({
       <button
         ref={triggerRef}
         type="button"
-        aria-label={unread > 0 ? `Notifications, ${unread} unread` : 'Notifications'}
+        aria-label={unread > 0 ? `View notifications, ${unread} unread` : 'View notifications'}
         aria-expanded={isOpen}
         aria-controls={isOpen ? panelId : undefined}
         onClick={() => setIsOpen((open) => !open)}

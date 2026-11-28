@@ -42,27 +42,33 @@ export function PageHeader({
   useBackLink(back ?? null);
 
   return (
-    <header className="relative isolate overflow-hidden bg-[image:var(--sp-gradient-page-header-mobile)] px-4 pt-4 pb-8 md:bg-[image:var(--sp-gradient-page-header)] md:px-8 md:pt-5 md:pb-20">
-      <Image
-        src="/images/shell/page-header-glow.svg"
-        alt=""
+    <header className="relative px-4 pt-4 pb-8 md:px-8 md:pt-5 md:pb-20">
+      {/* Decorative layer: clips the glow without clipping the header's menus. */}
+      <div
         aria-hidden
-        width={800}
-        height={640}
-        unoptimized
-        className="pointer-events-none absolute -top-[300px] -right-[244px] -z-10 hidden max-w-none select-none md:block"
-      />
-      <Image
-        src="/images/shell/mobile-page-header-glow.svg"
-        alt=""
-        aria-hidden
-        width={580}
-        height={500}
-        unoptimized
-        className="pointer-events-none absolute -top-[200px] left-[30px] -z-10 max-w-none select-none md:hidden"
-      />
+        className="absolute inset-0 overflow-hidden bg-[image:var(--sp-gradient-page-header-mobile)] md:bg-[image:var(--sp-gradient-page-header)]"
+      >
+        <Image
+          src="/images/shell/page-header-glow.svg"
+          alt=""
+          aria-hidden
+          width={800}
+          height={640}
+          unoptimized
+          className="pointer-events-none absolute -top-[300px] -right-[244px] hidden max-w-none select-none md:block"
+        />
+        <Image
+          src="/images/shell/mobile-page-header-glow.svg"
+          alt=""
+          aria-hidden
+          width={580}
+          height={500}
+          unoptimized
+          className="pointer-events-none absolute -top-[200px] left-[30px] max-w-none select-none md:hidden"
+        />
+      </div>
 
-      <div className="flex flex-col gap-3 md:gap-6">
+      <div className="relative flex flex-col gap-3 md:gap-6">
         <div className="flex min-h-9 items-center justify-between gap-4">
           <Breadcrumb items={breadcrumb} />
           {shell?.headerUtilities ? (

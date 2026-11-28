@@ -75,7 +75,7 @@ export function CollapsedSidebar({
     .find((group) => group.key === flyout?.groupKey);
 
   return (
-    <aside className="sticky top-0 flex h-dvh w-[72px] shrink-0 flex-col items-center gap-1 bg-sidebar pt-5 pb-4">
+    <aside className="sticky top-0 z-30 flex h-dvh w-[72px] shrink-0 flex-col items-center gap-1 bg-sidebar pt-5 pb-4">
       <button
         type="button"
         onClick={onExpand}

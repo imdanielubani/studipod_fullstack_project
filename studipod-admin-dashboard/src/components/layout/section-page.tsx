@@ -8,6 +8,8 @@ import { PageContent, PageHeader, type Crumb } from './page-header';
 
 type SectionPageProps = {
   title: string;
+  /** Name used in the "not available yet" message; defaults to the title. */
+  featureName?: string;
   breadcrumb: ReadonlyArray<Crumb>;
   description?: string;
   /** False when the administrator lacks the page's permission (presentation only). */
@@ -21,6 +23,7 @@ type SectionPageProps = {
  */
 export function SectionPage({
   title,
+  featureName = title,
   breadcrumb,
   description,
   isAllowed,
@@ -34,7 +37,7 @@ export function SectionPage({
           {isAllowed ? (
             <ContentEmpty
               icon={Construction}
-              title={`${title} isn’t available yet`}
+              title={`${featureName} isn’t available yet`}
               description="This part of the admin console is being built. It will appear here when it’s ready."
             />
           ) : (

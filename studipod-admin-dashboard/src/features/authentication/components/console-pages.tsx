@@ -56,6 +56,7 @@ export function DashboardOverviewPage() {
   return (
     <SectionPage
       title={greetingFor(new Date(), firstName)}
+      featureName="The dashboard overview"
       description="What’s happening on StudiPod right now."
       breadcrumb={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Overview' }]}
       isAllowed={hasPermission(permissions, 'dashboard.view')}

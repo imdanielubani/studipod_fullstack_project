@@ -57,7 +57,7 @@ function ExpandedSidebar({
   counts,
 }: Omit<SidebarProps, 'isCollapsed'>) {
   return (
-    <aside className="sticky top-0 flex h-dvh w-[264px] shrink-0 flex-col bg-sidebar px-3 pt-5 pb-4">
+    <aside className="sticky top-0 z-30 flex h-dvh w-[264px] shrink-0 flex-col bg-sidebar px-3 pt-5 pb-4">
       <div className="flex items-center justify-between pr-2 pb-2 pl-3">
         <BrandLogo className="w-[124px]" />
         <button
