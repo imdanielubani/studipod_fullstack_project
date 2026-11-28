@@ -76,6 +76,12 @@
   --sp-icon-warning: #d97706;
   --sp-icon-success: #16a34a;
 
+  /* App shell */
+  --sp-bg-sidebar-item-hover: #1e3a8a;
+  --sp-bg-sidebar-item-active: #2563eb;
+  --sp-gradient-page-header: linear-gradient(137.2deg, #0b1a5c 0%, #1e40af 44%, #2563eb 80%);
+  --sp-gradient-page-header-mobile: linear-gradient(109.3deg, #0b1a5c 0%, #1e40af 44%, #2563eb 80%);
+
   /* Authentication brand panel */
   --sp-gradient-brand-panel: linear-gradient(
     137.7deg,
@@ -170,6 +176,12 @@
   --color-icon-warning: var(--sp-icon-warning);
   --color-icon-success: var(--sp-icon-success);
   --color-warning-track: var(--sp-warning-track);
+  --color-sidebar: var(--sp-bg-sidebar);
+  --color-sidebar-hover: var(--sp-bg-sidebar-item-hover);
+  --color-sidebar-active: var(--sp-bg-sidebar-item-active);
+  --color-accent-coral: var(--sp-brand-accent);
+  --color-glass: var(--sp-glass-bg);
+  --color-glass-line: var(--sp-glass-border);
   --color-warning-fill: var(--sp-warning-fill);
 
   /* shadcn/ui colour aliases */
@@ -199,6 +211,7 @@
   --radius-xl: 16px;
 
   /* Elevation */
+  --shadow-elevation-xs: 0 1px 2px 0 rgb(15 23 42 / 0.05);
   --shadow-elevation-lg: 0 10px 15px -3px rgb(15 23 42 / 0.1), 0 4px 6px -4px rgb(15 23 42 / 0.05);
   --shadow-elevation-xl: 0 20px 25px -5px rgb(15 23 42 / 0.1), 0 8px 10px -6px rgb(15 23 42 / 0.04);
   --shadow-focus: 0 0 0 3px rgb(37 99 235 / 0.35);
@@ -216,6 +229,8 @@
   --text-h3: 20px;
   --text-h3--line-height: 28px;
   --text-h3--letter-spacing: -0.005em;
+  --text-h4: 16px;
+  --text-h4--line-height: 24px;
   --text-body-md: 14px;
   --text-body-md--line-height: 20px;
   --text-body-sm: 13px;
