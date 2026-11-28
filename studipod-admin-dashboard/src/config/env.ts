@@ -29,3 +29,26 @@ export function getPublicEnv(): PublicEnv {
 
   return result.data;
 }
+
+const optionalUrl = z.url({ protocol: /^https?$/ });
+const optionalEmail = z.email();
+
+export type PublicLinks = {
+  /** Candidate web app, offered to candidate accounts that reach the console. */
+  webAppUrl: string | null;
+  /** Mailbox that reaches the Super Admins, for "Contact a Super Admin" links. */
+  adminSupportEmail: string | null;
+};
+
+/**
+ * Optional public links. Each value is validated on its own and resolves to null
+ * when missing or invalid, so an unset link hides its control instead of failing.
+ */
+export function getPublicLinks(): PublicLinks {
+  const webApp = optionalUrl.safeParse(process.env.NEXT_PUBLIC_WEBAPP_URL);
+  const support = optionalEmail.safeParse(process.env.NEXT_PUBLIC_ADMIN_SUPPORT_EMAIL);
+  return {
+    webAppUrl: webApp.success ? webApp.data : null,
+    adminSupportEmail: support.success ? support.data : null,
+  };
+}
