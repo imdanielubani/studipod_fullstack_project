@@ -29,6 +29,11 @@ export type NavPage = {
   href: string;
   /** Permission key required to see the page (for example "users.view"). */
   permission: string;
+  /**
+   * True when app/(dashboard)/<href>/page.tsx exists. Set it when a screen is
+   * built, so the catch-all route stops generating this address.
+   */
+  hasDedicatedPage?: true;
 };
 
 export type NavGroup = {
@@ -54,7 +59,13 @@ export const NAVIGATION: ReadonlyArray<NavSection> = [
         label: 'Dashboard',
         icon: LayoutDashboard,
         pages: [
-          { key: 'overview', label: 'Overview', href: '/dashboard', permission: 'dashboard.view' },
+          {
+            key: 'overview',
+            label: 'Overview',
+            href: '/dashboard',
+            permission: 'dashboard.view',
+            hasDedicatedPage: true,
+          },
           {
             key: 'analytics',
             label: 'Analytics',
@@ -347,6 +358,20 @@ export const ACCOUNT_PAGES = {
   profile: { label: 'My profile', href: '/profile' },
   security: { label: 'Security', href: '/profile/security' },
 } as const;
+
+/**
+ * Addresses served by the catch-all route: every navigation and account page that
+ * does not have its own screen yet. Any other address is a 404.
+ */
+export function catchAllAddresses(sections: ReadonlyArray<NavSection> = NAVIGATION): string[] {
+  const pages = sections.flatMap((section) =>
+    section.groups.flatMap((group) => group.pages.filter((page) => !page.hasDedicatedPage)),
+  );
+  return [
+    ...pages.map((page) => page.href),
+    ...Object.values(ACCOUNT_PAGES).map((page) => page.href),
+  ];
+}
 
 /** Grants access when the administrator holds the key or the wildcard "*". */
 export function hasPermission(permissions: ReadonlyArray<string>, key: string): boolean {

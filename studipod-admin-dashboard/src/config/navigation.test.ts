@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  catchAllAddresses,
   filterNavigation,
   findNavLocation,
   findNavPageByHref,
@@ -26,6 +27,16 @@ describe('navigation config', () => {
     expect(new Set(allPages.map((page) => page.key)).size).toBe(allPages.length);
     expect(new Set(allPages.map((page) => page.href)).size).toBe(allPages.length);
     allPages.forEach((page) => expect(page.href).toMatch(/^\/[a-z0-9/-]+$/));
+  });
+});
+
+describe('catchAllAddresses', () => {
+  it('lists every page without a dedicated screen plus the account pages', () => {
+    const addresses = catchAllAddresses();
+    expect(addresses).toHaveLength(38);
+    expect(addresses).not.toContain('/dashboard');
+    expect(addresses).toContain('/users/verification');
+    expect(addresses).toContain('/profile/security');
   });
 });
 

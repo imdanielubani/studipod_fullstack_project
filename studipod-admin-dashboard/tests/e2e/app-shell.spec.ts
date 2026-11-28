@@ -60,8 +60,9 @@ test.describe('app shell', () => {
     await expect(page.getByText('You’ve been signed out')).toBeVisible();
   });
 
-  test('shows a not-found page for unknown addresses', async ({ page }) => {
-    await page.goto('/this-page-does-not-exist');
+  test('answers unknown addresses with a 404 and the not-found page', async ({ page }) => {
+    const response = await page.goto('/this-page-does-not-exist');
+    expect(response?.status()).toBe(404);
     await expect(page.getByRole('heading', { name: 'Page not found' })).toBeVisible();
   });
 });

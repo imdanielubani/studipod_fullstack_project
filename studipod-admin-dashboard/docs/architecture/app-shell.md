@@ -62,9 +62,20 @@ The sidebar toggle overrides the default; the choice is remembered in this brows
 - `app/(dashboard)/[...slug]/page.tsx` serves every navigation page and the account pages
   (`/profile`, `/profile/security`) that do not have a dedicated screen yet. It shows the page
   header and a "not available yet" state, or a "no access" state naming the missing permission.
-- A dedicated page (for example `app/(dashboard)/users/page.tsx`) automatically takes
-  precedence over the catch-all route. Unknown addresses are a 404.
-- Do not leave empty route folders under `app/(dashboard)`: they can shadow the catch-all route.
+- These addresses are generated at build time (`generateStaticParams` with
+  `dynamicParams = false`), so any other address is a real `404`.
+- When you build a dedicated screen (for example `app/(dashboard)/users/page.tsx`), set
+  `hasDedicatedPage: true` on its entry in `src/config/navigation.ts` so the catch-all route
+  stops generating that address.
+- There is no app-wide `loading.tsx`: a streaming fallback would fix the response status at
+  `200` before a page could return `404`. The session gate shows its own loading state.
+
+## Session expiry
+
+When the 24-hour inactivity limit is reached, the session ends and the "Your session has
+expired" dialog opens over the console, which stays visible but inert behind it (as designed).
+The console is drawn from a snapshot of who was signed in; it is never used for authorisation,
+the query cache is already cleared, and keyboard shortcuts are off until the user signs in again.
 
 ## Search and keyboard shortcuts
 

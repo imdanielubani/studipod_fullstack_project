@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 
-import { ACCOUNT_PAGES, findNavPageByHref } from '@/config/navigation';
+import { ACCOUNT_PAGES, catchAllAddresses, findNavPageByHref } from '@/config/navigation';
 import {
   AccountDestinationPage,
   NavDestinationPage,
@@ -9,9 +9,15 @@ import {
 
 /**
  * Every sidebar destination and account page that has no dedicated screen yet.
- * Dedicated pages (for example app/(dashboard)/users/page.tsx) take precedence
- * over this route automatically. Unknown addresses are a 404.
+ * The addresses are fixed and generated at build time; any other address is a
+ * real 404 (dynamicParams = false). When a dedicated page is added, mark its
+ * navigation entry with hasDedicatedPage so this route stops generating it.
  */
+export const dynamicParams = false;
+
+export function generateStaticParams(): Array<{ slug: string[] }> {
+  return catchAllAddresses().map((href) => ({ slug: href.slice(1).split('/') }));
+}
 
 type Destination =
   | { kind: 'nav'; title: string; groupLabel: string; groupHref: string; permission: string }
