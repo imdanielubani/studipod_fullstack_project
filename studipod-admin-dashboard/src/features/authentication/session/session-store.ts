@@ -12,6 +12,7 @@ type SessionState = {
   administrator: Administrator | null;
   /** Previous sign-in to show once after signing in, then cleared. */
   lastSignIn: Session['lastSignIn'];
+  currentSignIn: Session['currentSignIn'];
   setSession: (session: Session) => void;
   clearSession: () => void;
   consumeLastSignIn: () => Session['lastSignIn'];
@@ -22,6 +23,7 @@ const signedOutState = {
   accessTokenExpiresAt: null,
   administrator: null,
   lastSignIn: null,
+  currentSignIn: null,
 } as const;
 
 export const useSessionStore = create<SessionState>()((set, get) => ({
@@ -34,6 +36,7 @@ export const useSessionStore = create<SessionState>()((set, get) => ({
       accessTokenExpiresAt: Date.parse(session.accessTokenExpiresAt),
       administrator: session.administrator,
       lastSignIn: session.lastSignIn ?? null,
+      currentSignIn: session.currentSignIn ?? null,
     }),
   clearSession: () => set({ status: 'unauthenticated', ...signedOutState }),
   consumeLastSignIn: () => {

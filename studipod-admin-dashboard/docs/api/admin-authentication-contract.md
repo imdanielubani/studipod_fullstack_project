@@ -54,11 +54,14 @@ Session:
     "roles": ["super-admin"],
     "permissions": ["users:read", "users:update"]
   },
+  "currentSignIn": { "at": "2026-11-28T08:14:00Z", "location": "Lagos, NG" },
   "lastSignIn": { "at": "2026-11-27T08:14:00Z", "location": "Lagos, NG" }
 }
 ```
 
-`lastSignIn` is optional and may be `null`. Timestamps are ISO 8601 with an offset.
+`currentSignIn` (this session, shown in the account menu) and `lastSignIn` (the previous
+session, shown once after signing in) are optional and may be `null`; on refresh the backend
+returns the `currentSignIn` of the session being refreshed. Timestamps are ISO 8601 with an offset.
 
 ## Refresh cookie
 

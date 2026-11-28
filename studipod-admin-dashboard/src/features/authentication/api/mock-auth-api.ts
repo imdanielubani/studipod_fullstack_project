@@ -49,7 +49,7 @@ function nameFromEmail(email: string): { firstName: string; lastName: string } {
   return { firstName: title(first), lastName: title(last) };
 }
 
-function buildSession(email: string): Session {
+function buildSession(email: string, signedInAt: number = Date.now()): Session {
   const now = Date.now();
   return {
     accessToken: `mock.${randomId(24)}`,
@@ -61,21 +61,38 @@ function buildSession(email: string): Session {
       roles: ['super-admin'],
       permissions: ['*'],
     },
-    lastSignIn: { at: iso(now - 26 * 60 * 60_000), location: 'Lagos, NG' },
+    currentSignIn: { at: iso(signedInAt), location: 'Lagos, NG' },
+    lastSignIn: { at: iso(signedInAt - 26 * 60 * 60_000), location: 'Lagos, NG' },
   };
 }
 
-function readStoredEmail(): string | null {
+type StoredMockSession = { email: string; signedInAt: number };
+
+/** Simulates the HttpOnly refresh cookie: the signed-in email and when the session began. */
+function readStoredSession(): StoredMockSession | null {
   try {
-    return globalThis.sessionStorage?.getItem(SESSION_STORAGE_KEY) ?? null;
+    const raw = globalThis.sessionStorage?.getItem(SESSION_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed: unknown = JSON.parse(raw);
+    if (
+      typeof parsed === 'object' &&
+      parsed !== null &&
+      'email' in parsed &&
+      'signedInAt' in parsed &&
+      typeof parsed.email === 'string' &&
+      typeof parsed.signedInAt === 'number'
+    ) {
+      return { email: parsed.email, signedInAt: parsed.signedInAt };
+    }
+    return null;
   } catch {
     return null;
   }
 }
 
-function storeEmail(email: string | null): void {
+function storeSession(session: StoredMockSession | null): void {
   try {
-    if (email) globalThis.sessionStorage?.setItem(SESSION_STORAGE_KEY, email);
+    if (session) globalThis.sessionStorage?.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
     else globalThis.sessionStorage?.removeItem(SESSION_STORAGE_KEY);
   } catch {
     // Storage unavailable (private mode): the mock session simply does not survive reloads.
@@ -178,8 +195,9 @@ export function createMockAuthApi({ latencyMs = DEFAULT_LATENCY_MS } = {}): Auth
         });
       }
       challenges.delete(challengeId);
-      storeEmail(challenge.email);
-      return buildSession(challenge.email);
+      const signedInAt = Date.now();
+      storeSession({ email: challenge.email, signedInAt });
+      return buildSession(challenge.email, signedInAt);
     },
 
     async resendCode({ challengeId }) {
@@ -202,14 +220,14 @@ export function createMockAuthApi({ latencyMs = DEFAULT_LATENCY_MS } = {}): Auth
 
     async refresh() {
       await delay();
-      const email = readStoredEmail();
-      if (!email) throw fail(401, AUTH_ERROR_CODES.unauthenticated, 'Not signed in.');
-      return { ...buildSession(email), lastSignIn: null };
+      const stored = readStoredSession();
+      if (!stored) throw fail(401, AUTH_ERROR_CODES.unauthenticated, 'Not signed in.');
+      return { ...buildSession(stored.email, stored.signedInAt), lastSignIn: null };
     },
 
     async signOut() {
       await delay();
-      storeEmail(null);
+      storeSession(null);
     },
 
     async forgotPassword() {
@@ -235,7 +253,7 @@ export function createMockAuthApi({ latencyMs = DEFAULT_LATENCY_MS } = {}): Auth
           rule: 'RECENTLY_USED',
         });
       }
-      storeEmail(null);
+      storeSession(null);
     },
 
     async requestAccess() {

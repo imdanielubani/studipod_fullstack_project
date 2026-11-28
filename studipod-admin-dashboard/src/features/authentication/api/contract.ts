@@ -65,15 +65,19 @@ export const administratorSchema = z.object({
 });
 export type Administrator = z.infer<typeof administratorSchema>;
 
+const signInEventSchema = z.object({
+  at: isoDateTime,
+  location: z.string().nullable().optional(),
+});
+
 export const sessionSchema = z.object({
   accessToken: z.string().min(1),
   accessTokenExpiresAt: isoDateTime,
   administrator: administratorSchema,
+  /** When and where this session signed in (account menu footer). */
+  currentSignIn: signInEventSchema.nullable().optional(),
   /** Previous successful sign-in, shown once after signing in. */
-  lastSignIn: z
-    .object({ at: isoDateTime, location: z.string().nullable().optional() })
-    .nullable()
-    .optional(),
+  lastSignIn: signInEventSchema.nullable().optional(),
 });
 export type Session = z.infer<typeof sessionSchema>;
 
