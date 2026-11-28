@@ -2,49 +2,162 @@
 @import 'tw-animate-css';
 
 /*
- * Design tokens (shadcn/ui convention). Neutral defaults until the Studipod
- * design-system values are applied. The admin console ships a light theme only.
+ * Studipod admin design tokens.
+ *
+ * Semantic values come from the Studipod design system ("Color" collection).
+ * Components use the semantic utilities defined in @theme below
+ * (bg-surface, text-fg-secondary, border-danger, ...). The shadcn/ui names
+ * (background, primary, ring, ...) are aliased to the same values so generated
+ * shadcn components inherit the brand. The console ships a light theme only.
  */
 :root {
-  --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  /* Backgrounds */
+  --sp-bg-canvas: #f8fafc;
+  --sp-bg-surface: #ffffff;
+  --sp-bg-surface-raised: #ffffff;
+  --sp-bg-subtle: #f1f5f9;
+  --sp-bg-brand-soft: #eff6ff;
+  --sp-bg-overlay: rgb(2 6 23 / 0.6);
+  --sp-bg-sidebar: #172554;
+
+  /* Actions */
+  --sp-action-primary: #2563eb;
+  --sp-action-primary-hover: #1d4ed8;
+  --sp-action-primary-pressed: #1e40af;
+  --sp-action-secondary: #ffffff;
+  --sp-action-secondary-hover: #f8fafc;
+  --sp-action-danger: #dc2626;
+  --sp-action-danger-hover: #b91c1c;
+  --sp-action-disabled: #f1f5f9;
+
+  /* Brand */
+  --sp-brand-primary: #2563eb;
+  --sp-brand-dark: #172554;
+  --sp-brand-accent: #fb7185;
+
+  /* Text */
+  --sp-text-primary: #0f172a;
+  --sp-text-secondary: #475569;
+  --sp-text-tertiary: #64748b;
+  --sp-text-disabled: #94a3b8;
+  --sp-text-on-brand: #ffffff;
+  --sp-text-link: #2563eb;
+  --sp-text-heading-brand: #172554;
+  --sp-text-on-sidebar: #dbeafe;
+  --sp-text-on-sidebar-muted: #93c5fd;
+  --sp-text-danger: #b91c1c;
+  --sp-text-warning: #92400e;
+  --sp-text-success: #166534;
+  --sp-text-info: #1d4ed8;
+
+  /* Borders */
+  --sp-border-default: #e2e8f0;
+  --sp-border-strong: #cbd5e1;
+  --sp-border-focus: #2563eb;
+  --sp-border-danger: #dc2626;
+  --sp-border-warning: #d97706;
+  --sp-border-success: #16a34a;
+  --sp-border-danger-subtle: #fecaca;
+  --sp-border-warning-subtle: #fde68a;
+  --sp-border-success-subtle: #bbf7d0;
+  --sp-border-info-subtle: #bfdbfe;
+
+  /* Status backgrounds */
+  --sp-status-danger-bg: #fef2f2;
+  --sp-status-warning-bg: #fffbeb;
+  --sp-status-success-bg: #f0fdf4;
+  --sp-status-info-bg: #eff6ff;
+
+  /* Icons */
+  --sp-icon-default: #64748b;
+  --sp-icon-strong: #334155;
+  --sp-icon-brand: #2563eb;
+  --sp-icon-danger: #dc2626;
+  --sp-icon-warning: #d97706;
+  --sp-icon-success: #16a34a;
+
+  /* Progress (session countdown) */
+  --sp-warning-track: #fde68a;
+  --sp-warning-fill: #d97706;
+
+  /* shadcn/ui aliases */
+  --radius: 0.5rem;
+  --background: var(--sp-bg-surface);
+  --foreground: var(--sp-text-primary);
+  --card: var(--sp-bg-surface);
+  --card-foreground: var(--sp-text-primary);
+  --popover: var(--sp-bg-surface-raised);
+  --popover-foreground: var(--sp-text-primary);
+  --primary: var(--sp-action-primary);
+  --primary-foreground: var(--sp-text-on-brand);
+  --secondary: var(--sp-action-secondary);
+  --secondary-foreground: var(--sp-text-primary);
+  --muted: var(--sp-bg-subtle);
+  --muted-foreground: var(--sp-text-tertiary);
+  --accent: var(--sp-bg-brand-soft);
+  --accent-foreground: var(--sp-text-heading-brand);
+  --destructive: var(--sp-action-danger);
+  --border: var(--sp-border-default);
+  --input: var(--sp-border-default);
+  --ring: var(--sp-border-focus);
 }
 
 @theme inline {
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, monospace;
+
+  /* Semantic colours */
+  --color-canvas: var(--sp-bg-canvas);
+  --color-surface: var(--sp-bg-surface);
+  --color-surface-raised: var(--sp-bg-surface-raised);
+  --color-subtle: var(--sp-bg-subtle);
+  --color-brand-soft: var(--sp-bg-brand-soft);
+  --color-overlay: var(--sp-bg-overlay);
+  --color-brand: var(--sp-brand-primary);
+  --color-brand-dark: var(--sp-brand-dark);
+  --color-action: var(--sp-action-primary);
+  --color-action-hover: var(--sp-action-primary-hover);
+  --color-action-pressed: var(--sp-action-primary-pressed);
+  --color-action-secondary: var(--sp-action-secondary);
+  --color-action-secondary-hover: var(--sp-action-secondary-hover);
+  --color-action-disabled: var(--sp-action-disabled);
+  --color-fg: var(--sp-text-primary);
+  --color-fg-secondary: var(--sp-text-secondary);
+  --color-fg-tertiary: var(--sp-text-tertiary);
+  --color-fg-disabled: var(--sp-text-disabled);
+  --color-on-brand: var(--sp-text-on-brand);
+  --color-link: var(--sp-text-link);
+  --color-heading: var(--sp-text-heading-brand);
+  --color-on-sidebar: var(--sp-text-on-sidebar);
+  --color-on-sidebar-muted: var(--sp-text-on-sidebar-muted);
+  --color-danger-fg: var(--sp-text-danger);
+  --color-warning-fg: var(--sp-text-warning);
+  --color-success-fg: var(--sp-text-success);
+  --color-info-fg: var(--sp-text-info);
+  --color-line: var(--sp-border-default);
+  --color-line-strong: var(--sp-border-strong);
+  --color-focus: var(--sp-border-focus);
+  --color-danger: var(--sp-border-danger);
+  --color-warning: var(--sp-border-warning);
+  --color-success: var(--sp-border-success);
+  --color-danger-subtle: var(--sp-border-danger-subtle);
+  --color-warning-subtle: var(--sp-border-warning-subtle);
+  --color-success-subtle: var(--sp-border-success-subtle);
+  --color-info-subtle: var(--sp-border-info-subtle);
+  --color-danger-bg: var(--sp-status-danger-bg);
+  --color-warning-bg: var(--sp-status-warning-bg);
+  --color-success-bg: var(--sp-status-success-bg);
+  --color-info-bg: var(--sp-status-info-bg);
+  --color-icon: var(--sp-icon-default);
+  --color-icon-strong: var(--sp-icon-strong);
+  --color-icon-brand: var(--sp-icon-brand);
+  --color-icon-danger: var(--sp-icon-danger);
+  --color-icon-warning: var(--sp-icon-warning);
+  --color-icon-success: var(--sp-icon-success);
+  --color-warning-track: var(--sp-warning-track);
+  --color-warning-fill: var(--sp-warning-fill);
+
+  /* shadcn/ui colour aliases */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -63,26 +176,62 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
-  --color-chart-1: var(--chart-1);
-  --color-chart-2: var(--chart-2);
-  --color-chart-3: var(--chart-3);
-  --color-chart-4: var(--chart-4);
-  --color-chart-5: var(--chart-5);
-  --color-sidebar: var(--sidebar);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-ring: var(--sidebar-ring);
+
+  /* Radii */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+
+  /* Elevation */
+  --shadow-elevation-lg: 0 10px 15px -3px rgb(15 23 42 / 0.1), 0 4px 6px -4px rgb(15 23 42 / 0.05);
+  --shadow-elevation-xl: 0 20px 25px -5px rgb(15 23 42 / 0.1), 0 8px 10px -6px rgb(15 23 42 / 0.04);
+  --shadow-focus: 0 0 0 3px rgb(37 99 235 / 0.35);
+
+  /* Type scale (size / line height / tracking) */
+  --text-display-lg: 36px;
+  --text-display-lg--line-height: 44px;
+  --text-display-lg--letter-spacing: -0.02em;
+  --text-h1: 30px;
+  --text-h1--line-height: 38px;
+  --text-h1--letter-spacing: -0.015em;
+  --text-h2: 24px;
+  --text-h2--line-height: 32px;
+  --text-h2--letter-spacing: -0.01em;
+  --text-h3: 20px;
+  --text-h3--line-height: 28px;
+  --text-h3--letter-spacing: -0.005em;
+  --text-body-md: 14px;
+  --text-body-md--line-height: 20px;
+  --text-body-sm: 13px;
+  --text-body-sm--line-height: 18px;
+  --text-caption: 12px;
+  --text-caption--line-height: 16px;
+  --text-overline: 11px;
+  --text-overline--line-height: 16px;
+  --text-overline--letter-spacing: 0.08em;
+  --text-micro: 10px;
+  --text-micro--line-height: 16px;
 }
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    @apply border-line outline-focus/50;
+  }
+  html {
+    @apply bg-surface;
   }
   body {
-    @apply bg-background text-foreground antialiased;
+    @apply bg-surface font-sans text-fg antialiased;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }
