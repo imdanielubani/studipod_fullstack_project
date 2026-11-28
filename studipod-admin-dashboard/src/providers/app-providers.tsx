@@ -1,9 +1,10 @@
 'use client';
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 
 import { Toaster } from '@/components/ui/toast';
+import { onSessionCleared } from '@/features/authentication/session/session-manager';
 import { ApiError } from '@/services/http/api-error';
 
 const MAX_QUERY_RETRIES = 2;
@@ -26,6 +27,9 @@ function createQueryClient(): QueryClient {
 export function AppProviders({ children }: { children: ReactNode }) {
   // One client per browser session; never shared between server requests.
   const [queryClient] = useState(createQueryClient);
+
+  // Admin data never outlives the session that fetched it.
+  useEffect(() => onSessionCleared(() => queryClient.clear()), [queryClient]);
 
   return (
     <QueryClientProvider client={queryClient}>
