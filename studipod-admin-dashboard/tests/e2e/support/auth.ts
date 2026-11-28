@@ -14,9 +14,15 @@ export const MOCK = {
 
 export async function submitCredentials(page: Page, email: string, password: string) {
   await page.goto('/sign-in');
-  await page.getByLabel('Work email').fill(email);
-  await page.getByLabel('Password', { exact: true }).fill(password);
-  await page.getByRole('button', { name: 'Sign in' }).click();
+  const submit = page.getByRole('button', { name: 'Sign in' });
+  // Text typed before React hydrates, or lost to a development-server refresh, never
+  // reaches the form; retry until the form has accepted both values.
+  await expect(async () => {
+    await page.getByLabel('Work email').fill(email);
+    await page.getByLabel('Password', { exact: true }).fill(password);
+    await expect(submit).toBeEnabled({ timeout: 2_000 });
+  }).toPass({ timeout: 45_000 });
+  await submit.click();
 }
 
 export async function signInAsAdmin(page: Page) {

@@ -4,9 +4,9 @@ import { SectionPage } from '@/components/layout/section-page';
 import { hasPermission } from '@/config/navigation';
 
 import { greetingFor } from '../lib/identity';
-import { useSessionStore } from '../session/session-store';
+import { useDisplayedSession } from '../session/displayed-session';
 
-/** Stable empty list: a new array per render would make the store selector loop. */
+/** Shared empty list for pages rendered without an administrator. */
 const NO_PERMISSIONS: ReadonlyArray<string> = [];
 
 type NavDestinationProps = {
@@ -23,9 +23,7 @@ export function NavDestinationPage({
   groupHref,
   permission,
 }: NavDestinationProps) {
-  const permissions = useSessionStore(
-    (state) => state.administrator?.permissions ?? NO_PERMISSIONS,
-  );
+  const permissions = useDisplayedSession().administrator?.permissions ?? NO_PERMISSIONS;
   return (
     <SectionPage
       title={title}
@@ -49,10 +47,9 @@ export function AccountDestinationPage({ title }: { title: string }) {
 
 /** Dashboard overview header with the time-of-day greeting. */
 export function DashboardOverviewPage() {
-  const firstName = useSessionStore((state) => state.administrator?.firstName ?? '');
-  const permissions = useSessionStore(
-    (state) => state.administrator?.permissions ?? NO_PERMISSIONS,
-  );
+  const { administrator } = useDisplayedSession();
+  const firstName = administrator?.firstName ?? '';
+  const permissions = administrator?.permissions ?? NO_PERMISSIONS;
   return (
     <SectionPage
       title={greetingFor(new Date(), firstName)}

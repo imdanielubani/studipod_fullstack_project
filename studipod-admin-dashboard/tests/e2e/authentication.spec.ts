@@ -148,6 +148,9 @@ test.describe('session timeout', () => {
 
     await page.clock.fastForward('02:00');
     await expect(page.getByRole('alertdialog', { name: 'Your session has expired' })).toBeVisible();
+    // The console stays on screen behind the dialog, as designed.
+    await expect(page.getByRole('heading', { level: 1, name: DASHBOARD_GREETING })).toBeAttached();
+    await expect(page.getByText('Daniel Ubani').first()).toBeAttached();
     await page.getByRole('button', { name: 'Sign in again' }).click();
 
     await expect(page).toHaveURL(/\/sign-in$/);

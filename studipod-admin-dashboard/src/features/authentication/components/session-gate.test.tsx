@@ -134,6 +134,8 @@ describe('SessionGate', () => {
     expect(
       screen.getByRole('alertdialog', { name: 'Your session has expired' }),
     ).toBeInTheDocument();
+    // The console stays on screen behind the dialog, as designed.
+    expect(screen.getByText('Protected content')).toBeInTheDocument();
     expect(useSessionStore.getState().status).toBe('unauthenticated');
     expect(useAuthFlowStore.getState()).toMatchObject({
       notice: 'session-expired',

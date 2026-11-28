@@ -11,6 +11,7 @@ import { notify } from '@/components/ui/toast';
 
 import type { Session } from '../api';
 import { useAuthFlowStore } from '../session/auth-flow-store';
+import { EndedSessionProvider, type EndedSession } from '../session/displayed-session';
 import {
   applyRemoteSignOut,
   connectHttpClientToSession,
@@ -53,6 +54,7 @@ export function SessionGate({ children }: { children: ReactNode }) {
   const accessTokenExpiresAt = useSessionStore((state) => state.accessTokenExpiresAt);
   const [hasConnectionError, setHasConnectionError] = useState(false);
   const [hasExpired, setHasExpired] = useState(false);
+  const [endedSession, setEndedSession] = useState<EndedSession | null>(null);
 
   const confirmSession = useCallback(async () => {
     const result = await refreshSession();
@@ -70,6 +72,9 @@ export function SessionGate({ children }: { children: ReactNode }) {
     // Several triggers can fire together (timer, failed renewal); end the session once.
     if (hasExpiredRef.current) return;
     hasExpiredRef.current = true;
+    // Keep who was signed in so the console can stay visible (and inert) behind the dialog.
+    const { administrator, currentSignIn } = useSessionStore.getState();
+    setEndedSession(administrator ? { administrator, currentSignIn } : null);
     setHasExpired(true);
     void signOut('session-expired');
   }, []);
@@ -142,7 +147,12 @@ export function SessionGate({ children }: { children: ReactNode }) {
   }, [status]);
 
   if (hasExpired) {
-    return <SessionExpiredDialog onSignInAgain={() => router.replace('/sign-in')} />;
+    return (
+      <EndedSessionProvider value={endedSession}>
+        {endedSession ? children : null}
+        <SessionExpiredDialog onSignInAgain={() => router.replace('/sign-in')} />
+      </EndedSessionProvider>
+    );
   }
 
   if (status === 'authenticated') {

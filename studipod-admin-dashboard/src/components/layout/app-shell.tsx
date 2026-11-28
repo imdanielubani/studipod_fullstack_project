@@ -30,6 +30,8 @@ export type ShellAdministrator = {
 type AppShellProps = {
   administrator: ShellAdministrator;
   onSignOut: () => void;
+  /** The session expired: the shell stays visible behind the expired dialog but takes no input. */
+  isSessionEnded?: boolean;
   children: ReactNode;
 };
 
@@ -39,7 +41,12 @@ type AppShellProps = {
  * notifications, the account menu and keyboard shortcuts. Pages render their
  * own PageHeader and content inside it.
  */
-export function AppShell({ administrator, onSignOut, children }: AppShellProps) {
+export function AppShell({
+  administrator,
+  onSignOut,
+  isSessionEnded = false,
+  children,
+}: AppShellProps) {
   const pathname = usePathname();
   const router = useRouter();
   const isWideScreen = useMediaQuery(MEDIA.wide);
@@ -74,12 +81,16 @@ export function AppShell({ administrator, onSignOut, children }: AppShellProps) 
     if (isTabletUp) setMobileNavOpen(false);
   }, [isTabletUp, setMobileNavOpen]);
 
-  useGlobalShortcuts({
-    onSearch: () => setIsSearchOpen(true),
-    onShowShortcuts: () => setIsShortcutsOpen(true),
-    onGoToProfile: () => router.push(ACCOUNT_PAGES.profile.href as Route),
-    onGoToSecurity: () => router.push(ACCOUNT_PAGES.security.href as Route),
-  });
+  // Off once the session has expired: nothing may open over the expired dialog.
+  useGlobalShortcuts(
+    {
+      onSearch: () => setIsSearchOpen(true),
+      onShowShortcuts: () => setIsShortcutsOpen(true),
+      onGoToProfile: () => router.push(ACCOUNT_PAGES.profile.href as Route),
+      onGoToSecurity: () => router.push(ACCOUNT_PAGES.security.href as Route),
+    },
+    !isSessionEnded,
+  );
 
   const toggleGroup = (groupKey: string) =>
     setOpenGroupKey(effectiveOpenGroup === groupKey ? '' : groupKey);
