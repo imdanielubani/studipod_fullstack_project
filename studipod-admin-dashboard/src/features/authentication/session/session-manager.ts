@@ -1,18 +1,34 @@
+import { z } from 'zod';
+
 import { isApiError } from '@/services/http/api-error';
 import { registerAuthBridge } from '@/services/http/http-client';
 
 import { loadAuthApi, type Session } from '../api';
 import { useAuthFlowStore, type SignInNotice } from './auth-flow-store';
+import { INACTIVITY_TIMEOUT_MS, readLastActivity, writeLastActivity } from './inactivity';
 import { useSessionStore } from './session-store';
 
 const CHANNEL_NAME = 'studipod-admin-auth';
 
-type AuthBroadcast = { type: 'signed-in' } | { type: 'signed-out'; notice: SignInNotice };
+/** Messages from other tabs are untrusted input: only these shapes are accepted. */
+const authBroadcastSchema = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('signed-in') }),
+  z.object({
+    type: z.literal('signed-out'),
+    notice: z.enum(['signed-out', 'session-expired', 'password-changed']),
+  }),
+]);
+type AuthBroadcast = z.infer<typeof authBroadcastSchema>;
 
 export type RefreshResult =
   { ok: true; session: Session } | { ok: false; reason: 'unauthenticated' | 'network' };
 
 let refreshInFlight: Promise<RefreshResult> | null = null;
+/**
+ * Incremented every time the local session ends. A refresh that started before a
+ * sign-out must not bring the session back when its response arrives later.
+ */
+let sessionEpoch = 0;
 const clearListeners = new Set<() => void>();
 
 function broadcast(message: AuthBroadcast): void {
@@ -26,7 +42,10 @@ function broadcast(message: AuthBroadcast): void {
 export function subscribeToOtherTabs(listener: (message: AuthBroadcast) => void): () => void {
   if (typeof BroadcastChannel === 'undefined') return () => undefined;
   const channel = new BroadcastChannel(CHANNEL_NAME);
-  channel.onmessage = (event: MessageEvent<AuthBroadcast>) => listener(event.data);
+  channel.onmessage = (event: MessageEvent<unknown>) => {
+    const message = authBroadcastSchema.safeParse(event.data);
+    if (message.success) listener(message.data);
+  };
   return () => channel.close();
 }
 
@@ -37,18 +56,25 @@ export function onSessionCleared(listener: () => void): () => void {
 }
 
 /**
- * Records why the visitor is being sent to sign-in. After an expired session the
- * email is kept for prefill; a repeated notice never erases an email already known.
+ * Ends the local session and records why the visitor is going back to sign-in.
+ * Sign-in flow state (pending challenge, access-denied details) is discarded so
+ * nothing lingers on a shared device. After an expired session the email is kept
+ * for prefill, and a repeated notice never erases an email already known.
  */
-function recordSignOutNotice(notice: SignInNotice, email: string | null): void {
+function endLocalSession(notice: SignInNotice | null): void {
   const flow = useAuthFlowStore.getState();
-  const prefill = notice === 'session-expired' ? (email ?? flow.prefillEmail) : null;
-  flow.setNotice(notice, prefill);
-}
-
-function clearLocalSession(): void {
+  const email = useSessionStore.getState().administrator?.email ?? flow.prefillEmail;
+  sessionEpoch += 1;
   useSessionStore.getState().clearSession();
   clearListeners.forEach((listener) => listener());
+  flow.reset();
+  if (notice) flow.setNotice(notice, notice === 'session-expired' ? email : null);
+}
+
+/** True when the last recorded activity is older than the inactivity limit. */
+export function hasIdleSessionExpired(now = Date.now()): boolean {
+  const lastActivity = readLastActivity();
+  return lastActivity !== null && now - lastActivity >= INACTIVITY_TIMEOUT_MS;
 }
 
 /**
@@ -57,13 +83,16 @@ function clearLocalSession(): void {
  */
 export function refreshSession(): Promise<RefreshResult> {
   refreshInFlight ??= (async (): Promise<RefreshResult> => {
+    const epochAtStart = sessionEpoch;
     try {
       const session = await (await loadAuthApi()).refresh();
+      // Signed out while the request was in flight: discard the late response.
+      if (epochAtStart !== sessionEpoch) return { ok: false, reason: 'unauthenticated' };
       useSessionStore.getState().setSession(session);
       return { ok: true, session };
     } catch (error: unknown) {
       if (isApiError(error) && error.isRetryable) return { ok: false, reason: 'network' };
-      clearLocalSession();
+      if (epochAtStart === sessionEpoch) endLocalSession(null);
       return { ok: false, reason: 'unauthenticated' };
     } finally {
       refreshInFlight = null;
@@ -74,6 +103,7 @@ export function refreshSession(): Promise<RefreshResult> {
 
 /** Stores the session returned by code verification and tells other tabs. */
 export function establishSession(session: Session): void {
+  writeLastActivity(Date.now());
   useSessionStore.getState().setSession(session);
   useAuthFlowStore.getState().setChallenge(null);
   broadcast({ type: 'signed-in' });
@@ -84,11 +114,11 @@ export function establishSession(session: Session): void {
  * even when the network call fails, so a signed-out tab never keeps admin data.
  */
 export async function signOut(notice: SignInNotice = 'signed-out'): Promise<void> {
-  const { accessToken, administrator } = useSessionStore.getState();
-  clearLocalSession();
-  recordSignOutNotice(notice, administrator?.email ?? null);
+  const { accessToken } = useSessionStore.getState();
+  endLocalSession(notice);
   broadcast({ type: 'signed-out', notice });
   try {
+    // The backend revokes the refresh-token family identified by the HttpOnly cookie.
     await (await loadAuthApi()).signOut({ accessToken });
   } catch {
     // The refresh cookie expires on its own; the local session is already gone.
@@ -97,9 +127,7 @@ export async function signOut(notice: SignInNotice = 'signed-out'): Promise<void
 
 /** Applies a sign-out that happened in another tab. */
 export function applyRemoteSignOut(notice: SignInNotice): void {
-  const email = useSessionStore.getState().administrator?.email ?? null;
-  clearLocalSession();
-  recordSignOutNotice(notice, email);
+  endLocalSession(notice);
 }
 
 /** Connects the HTTP client to the session so authenticated requests carry the token. */

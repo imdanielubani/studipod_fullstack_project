@@ -5,7 +5,14 @@ import { ApiError } from '@/services/http/api-error';
 import type { AuthApi, Session } from '../api';
 import type * as AuthApiModule from '../api';
 import { useAuthFlowStore } from './auth-flow-store';
-import { establishSession, onSessionCleared, refreshSession, signOut } from './session-manager';
+import { INACTIVITY_TIMEOUT_MS, writeLastActivity } from './inactivity';
+import {
+  establishSession,
+  hasIdleSessionExpired,
+  onSessionCleared,
+  refreshSession,
+  signOut,
+} from './session-manager';
 import { useSessionStore } from './session-store';
 
 const api = {
@@ -100,5 +107,43 @@ describe('session manager', () => {
     await expect(signOut()).resolves.toBeUndefined();
     expect(useSessionStore.getState().status).toBe('unauthenticated');
     expect(useAuthFlowStore.getState()).toMatchObject({ notice: 'signed-out', prefillEmail: null });
+  });
+
+  it('discards a refresh that resolves after the user signed out', async () => {
+    let resolveRefresh: (value: Session) => void = () => undefined;
+    api.refresh.mockReturnValue(new Promise<Session>((resolve) => (resolveRefresh = resolve)));
+    establishSession(session);
+
+    const pending = refreshSession();
+    await signOut();
+    resolveRefresh({ ...session, accessToken: 'token-2' });
+
+    await expect(pending).resolves.toEqual({ ok: false, reason: 'unauthenticated' });
+    expect(useSessionStore.getState()).toMatchObject({
+      status: 'unauthenticated',
+      accessToken: null,
+    });
+  });
+
+  it('forgets sign-in flow details when the session ends', async () => {
+    useAuthFlowStore.getState().setChallenge({
+      challengeId: 'chl_1',
+      maskedEmail: 'd••••@studipod.com',
+      codeExpiresAt: '2026-11-28T10:10:00Z',
+      resendAvailableAt: '2026-11-28T10:01:00Z',
+    });
+    establishSession(session);
+    await signOut();
+    expect(useAuthFlowStore.getState().challenge).toBeNull();
+    expect(useAuthFlowStore.getState().accessDenied).toBeNull();
+  });
+
+  it('treats a console left idle for 24 hours as expired', () => {
+    const now = Date.now();
+    expect(hasIdleSessionExpired(now)).toBe(false);
+    writeLastActivity(now - INACTIVITY_TIMEOUT_MS + 60_000);
+    expect(hasIdleSessionExpired(now)).toBe(false);
+    writeLastActivity(now - INACTIVITY_TIMEOUT_MS);
+    expect(hasIdleSessionExpired(now)).toBe(true);
   });
 });

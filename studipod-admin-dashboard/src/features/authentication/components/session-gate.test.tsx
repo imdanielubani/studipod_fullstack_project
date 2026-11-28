@@ -79,6 +79,22 @@ describe('SessionGate', () => {
     expect(screen.queryByText('Protected content')).not.toBeInTheDocument();
   });
 
+  it('does not revive a console that was left idle past the limit', async () => {
+    window.localStorage.setItem(
+      'studipod-admin:last-activity',
+      String(Date.now() - INACTIVITY_TIMEOUT_MS - 1_000),
+    );
+    render(
+      <SessionGate>
+        <Protected />
+      </SessionGate>,
+    );
+
+    await waitFor(() => expect(replace).toHaveBeenCalledWith('/sign-in'));
+    expect(api.refresh).not.toHaveBeenCalled();
+    expect(useAuthFlowStore.getState().notice).toBe('session-expired');
+  });
+
   it('offers a retry when the backend cannot be reached', async () => {
     api.refresh
       .mockRejectedValueOnce(new ApiError({ status: 0, code: 'NETWORK_ERROR', message: 'Offline' }))

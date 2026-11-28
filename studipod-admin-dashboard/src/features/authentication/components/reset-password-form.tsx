@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useQuery } from '@tanstack/react-query';
 import { Circle, CircleCheck, CircleX, Clock, LoaderCircle, Lock } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 
 import { Alert } from '@/components/ui/alert';
@@ -45,6 +45,13 @@ const POLICY_MESSAGES: Record<PasswordPolicyRule, string> = {
 
 export function ResetPasswordForm({ token }: { token: string | null }) {
   const [isLinkInvalid, setIsLinkInvalid] = useState(false);
+
+  // Keep the single-use token out of browser history once it has been read.
+  useEffect(() => {
+    if (token && window.location.search.includes('token=')) {
+      window.history.replaceState(window.history.state, '', window.location.pathname);
+    }
+  }, [token]);
   const validation = useQuery({
     queryKey: ['auth', 'reset-token', token],
     queryFn: async () => (await loadAuthApi()).validateResetToken({ token: token ?? '' }),

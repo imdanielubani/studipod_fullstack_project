@@ -14,6 +14,7 @@ import { useAuthFlowStore } from '../session/auth-flow-store';
 import {
   applyRemoteSignOut,
   connectHttpClientToSession,
+  hasIdleSessionExpired,
   refreshSession,
   signOut,
   subscribeToOtherTabs,
@@ -81,6 +82,12 @@ export function SessionGate({ children }: { children: ReactNode }) {
   // Confirm the session once when the console opens.
   useEffect(() => {
     if (useSessionStore.getState().status !== 'unknown') return;
+    // A console left closed for longer than the inactivity limit is not revived by
+    // the refresh cookie; the backend enforces its own idle limit as well.
+    if (hasIdleSessionExpired()) {
+      void signOut('session-expired');
+      return;
+    }
     void refreshSession().then((result) => {
       if (!result.ok && result.reason === 'network') setHasConnectionError(true);
     });

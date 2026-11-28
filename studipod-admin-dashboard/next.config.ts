@@ -28,7 +28,14 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   typedRoutes: true,
   async headers() {
-    return [{ source: '/:path*', headers: securityHeaders }];
+    return [
+      { source: '/:path*', headers: securityHeaders },
+      // Pages that carry one-time tokens or account details must never be cached.
+      {
+        source: '/(reset-password|sign-in|access-denied)(.*)',
+        headers: [{ key: 'Cache-Control', value: 'no-store, max-age=0' }],
+      },
+    ];
   },
 };
 

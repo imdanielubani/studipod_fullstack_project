@@ -86,6 +86,18 @@ The `requestId` of an `ADMIN_ACCESS_DENIED` response is shown to the user as the
 
 ## Rules the backend enforces
 
+- **No account enumeration:** unknown emails get the same `INVALID_CREDENTIALS` shape (with a
+  plausible `attemptsRemaining`), status code and response time as known ones; locks apply
+  per email whether or not it exists.
+- **CSRF:** `refresh` and `sign-out` rely on the cookie, so the backend validates `Origin`
+  against the CORS allowlist and requires the `X-Request-Id` header the dashboard sends on
+  every request (a custom header forces a CORS preflight). CORS allows only the dashboard
+  origin with credentials.
+- **Sign-out** revokes the refresh-token family identified by the cookie, not only the
+  access token in the `Authorization` header.
+- **Idle limit:** the refresh family expires after 24 hours without use, independently of
+  the dashboard's own inactivity timer.
+
 - Only `@studipod.com` accounts can be administrators.
 - Codes: 6 digits, valid 10 minutes, resend after 45 seconds, a resend invalidates the old code.
 - 5 failed sign-ins lock the account for 15 minutes and notify Super Admins.
