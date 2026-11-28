@@ -32,7 +32,8 @@ const clock = (() => {
       // While no countdown is ticking the stored time goes stale; refresh it on read
       // so the first render of a new countdown is correct. Consecutive reads in one
       // render stay identical, as useSyncExternalStore requires.
-      if (!timer && Date.now() - now >= TICK_MS) now = Date.now();
+      // Absolute difference: the system clock can also be moved backwards.
+      if (!timer && Math.abs(Date.now() - now) >= TICK_MS) now = Date.now();
       return now;
     },
   };
