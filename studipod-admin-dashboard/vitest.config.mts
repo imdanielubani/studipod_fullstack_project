@@ -17,7 +17,8 @@ export default defineConfig({
       include: [
         'src/features/authentication/**/*.{ts,tsx}',
         'src/services/**/*.ts',
-        'src/components/ui/**/*.tsx',
+        'src/components/**/*.{ts,tsx}',
+        'src/config/**/*.ts',
         'src/hooks/**/*.ts',
         'src/lib/**/*.ts',
       ],

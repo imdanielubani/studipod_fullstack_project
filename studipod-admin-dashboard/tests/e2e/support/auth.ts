@@ -25,5 +25,8 @@ export async function signInAsAdmin(page: Page) {
   await page.getByLabel('Digit 1 of 6').pressSequentially(MOCK.validCode);
   await page.getByRole('button', { name: 'Verify' }).click();
   await expect(page).toHaveURL(/\/dashboard$/);
-  await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: DASHBOARD_GREETING })).toBeVisible();
 }
+
+/** The dashboard title greets the administrator by time of day. */
+export const DASHBOARD_GREETING = /^Good (morning|afternoon|evening), Daniel$/;

@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-import { MOCK, signInAsAdmin, submitCredentials } from './support/auth';
+import { DASHBOARD_GREETING, MOCK, signInAsAdmin, submitCredentials } from './support/auth';
 
 test.describe('sign-in journey', () => {
   test('signs in with password and emailed code, survives a reload, and signs out', async ({
@@ -10,7 +10,8 @@ test.describe('sign-in journey', () => {
     await expect(page.getByRole('status').filter({ hasText: 'Your last sign-in' })).toBeVisible();
 
     await page.reload();
-    await expect(page.getByText(MOCK.admin)).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1, name: DASHBOARD_GREETING })).toBeVisible();
+    await expect(page.getByText('Daniel Ubani').first()).toBeVisible();
 
     await page.getByRole('button', { name: 'Sign out' }).click();
     await expect(page).toHaveURL(/\/sign-in$/);
