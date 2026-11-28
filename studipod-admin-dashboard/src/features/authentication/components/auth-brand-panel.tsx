@@ -1,4 +1,4 @@
-import { CircleCheck, Lock, Mail, Sparkles, type LucideIcon } from 'lucide-react';
+import { CircleCheck, Lock, Mail, Sparkle, type LucideIcon } from 'lucide-react';
 import Image from 'next/image';
 
 import { APP_CONFIG, currentYear } from '@/config/app';
@@ -16,7 +16,7 @@ const FEATURE_CHIPS: ReadonlyArray<FeatureChip> = [
   { label: 'Email code sign-in', Icon: Mail, left: '60.6%', top: '14.2%' },
   { label: 'Role-based access', Icon: Lock, left: '10%', top: '19.6%' },
   { label: 'Every action audited', Icon: CircleCheck, left: '58.1%', top: '71.1%' },
-  { label: 'Live platform health', Icon: Sparkles, left: '8.75%', top: '79.1%' },
+  { label: 'Live platform health', Icon: Sparkle, left: '8.75%', top: '79.1%' },
 ];
 
 const TEAM_AVATARS: ReadonlyArray<{ initials: string; colour: string }> = [
@@ -79,7 +79,7 @@ export function AuthBrandPanel({ className }: { className?: string }) {
       </ul>
 
       <div className="absolute top-[35%] right-12 left-16 flex flex-col">
-        <Sparkles aria-hidden className="size-8" strokeWidth={1.5} />
+        <Sparkle aria-hidden className="size-8" strokeWidth={1.5} />
         <p className="mt-5 text-display-lg font-bold">
           Run {APP_CONFIG.productName}
           <br />
