@@ -18,6 +18,7 @@
 | `NEXT_PUBLIC_WS_URL`              | Browser + server | Build time | Yes      | Socket.IO endpoint, `ws://` or `wss://`                                             |
 | `NEXT_PUBLIC_WEBAPP_URL`          | Browser + server | Build time | No       | Candidate web app, linked from "Access denied"; hidden when unset                   |
 | `NEXT_PUBLIC_ADMIN_SUPPORT_EMAIL` | Browser + server | Build time | No       | Super Admin mailbox for "Contact a Super Admin"; hidden when unset                  |
+| `NEXT_PUBLIC_ADMIN_HELP_URL`      | Browser + server | Build time | No       | Administrator help centre, linked from the account menu; hidden when unset          |
 | `NEXT_PUBLIC_AUTH_MOCK`           | Browser          | Build time | No       | `true` uses the in-memory auth mock; development builds only, ignored in production |
 | `PORT`                            | Server           | Runtime    | No       | Listening port (image default `3000`; local dev `3100`)                             |
 | `HOSTNAME`                        | Server           | Runtime    | No       | Bind address (image default `0.0.0.0`)                                              |

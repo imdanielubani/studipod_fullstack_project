@@ -38,6 +38,8 @@ export type PublicLinks = {
   webAppUrl: string | null;
   /** Mailbox that reaches the Super Admins, for "Contact a Super Admin" links. */
   adminSupportEmail: string | null;
+  /** Help centre for administrators, linked from the account menu. */
+  adminHelpCentreUrl: string | null;
 };
 
 /**
@@ -47,8 +49,10 @@ export type PublicLinks = {
 export function getPublicLinks(): PublicLinks {
   const webApp = optionalUrl.safeParse(process.env.NEXT_PUBLIC_WEBAPP_URL);
   const support = optionalEmail.safeParse(process.env.NEXT_PUBLIC_ADMIN_SUPPORT_EMAIL);
+  const helpCentre = optionalUrl.safeParse(process.env.NEXT_PUBLIC_ADMIN_HELP_URL);
   return {
     webAppUrl: webApp.success ? webApp.data : null,
     adminSupportEmail: support.success ? support.data : null,
+    adminHelpCentreUrl: helpCentre.success ? helpCentre.data : null,
   };
 }

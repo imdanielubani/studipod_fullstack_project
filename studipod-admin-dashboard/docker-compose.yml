@@ -20,6 +20,7 @@ services:
         NEXT_PUBLIC_WS_URL: ${NEXT_PUBLIC_WS_URL:-ws://localhost:3001}
         NEXT_PUBLIC_WEBAPP_URL: ${NEXT_PUBLIC_WEBAPP_URL:-}
         NEXT_PUBLIC_ADMIN_SUPPORT_EMAIL: ${NEXT_PUBLIC_ADMIN_SUPPORT_EMAIL:-}
+        NEXT_PUBLIC_ADMIN_HELP_URL: ${NEXT_PUBLIC_ADMIN_HELP_URL:-}
     image: studipod-admin-dashboard:local
     environment:
       PORT: 3000
