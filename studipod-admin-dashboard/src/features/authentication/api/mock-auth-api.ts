@@ -17,7 +17,7 @@ export const MOCK_VALID_CODE = '123456';
 export const MOCK_EXPIRED_CODE = '000000';
 export const MOCK_RESET_TOKENS = { valid: 'valid-reset-token', expired: 'expired-reset-token' };
 
-const LATENCY_MS = 500;
+const DEFAULT_LATENCY_MS = 500;
 const MAX_ATTEMPTS = 5;
 const CODE_LIFETIME_MS = 10 * 60_000;
 const RESEND_COOLDOWN_MS = 45_000;
@@ -30,10 +30,6 @@ type Challenge = { email: string; attemptsRemaining: number; codeExpiresAt: numb
 const failedSignIns = new Map<string, number>();
 const lockedUntil = new Map<string, number>();
 const challenges = new Map<string, Challenge>();
-
-function delay(): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, LATENCY_MS));
-}
 
 function iso(ms: number): string {
   return new Date(ms).toISOString();
@@ -120,7 +116,10 @@ function assertNotLocked(email: string): void {
   }
 }
 
-export function createMockAuthApi(): AuthApi {
+/** `latencyMs` simulates network time so loading states are visible (tests pass 0). */
+export function createMockAuthApi({ latencyMs = DEFAULT_LATENCY_MS } = {}): AuthApi {
+  const delay = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, latencyMs));
+
   return {
     async signIn({ email, password }) {
       await delay();

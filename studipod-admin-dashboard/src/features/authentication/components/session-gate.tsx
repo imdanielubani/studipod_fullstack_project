@@ -3,7 +3,7 @@
 import { format, isToday, isYesterday } from 'date-fns';
 import { LoaderCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -63,7 +63,12 @@ export function SessionGate({ children }: { children: ReactNode }) {
     void confirmSession();
   }, [confirmSession]);
 
+  const hasExpiredRef = useRef(false);
+
   const expire = useCallback(() => {
+    // Several triggers can fire together (timer, failed renewal); end the session once.
+    if (hasExpiredRef.current) return;
+    hasExpiredRef.current = true;
     setHasExpired(true);
     void signOut('session-expired');
   }, []);
@@ -105,10 +110,11 @@ export function SessionGate({ children }: { children: ReactNode }) {
       MIN_REFRESH_DELAY_MS,
       accessTokenExpiresAt - Date.now() - REFRESH_LEAD_MS,
     );
+    const email = useSessionStore.getState().administrator?.email ?? null;
     const timer = setTimeout(() => {
       void refreshSession().then((result) => {
-        if (!result.ok && result.reason === 'unauthenticated') {
-          useAuthFlowStore.getState().setNotice('session-expired');
+        if (!result.ok && result.reason === 'unauthenticated' && !hasExpiredRef.current) {
+          useAuthFlowStore.getState().setNotice('session-expired', email);
         }
       });
     }, delay);

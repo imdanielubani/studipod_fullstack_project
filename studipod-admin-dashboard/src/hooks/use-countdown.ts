@@ -28,7 +28,13 @@ const clock = (() => {
         }
       };
     },
-    getSnapshot: (): number => now,
+    getSnapshot: (): number => {
+      // While no countdown is ticking the stored time goes stale; refresh it on read
+      // so the first render of a new countdown is correct. Consecutive reads in one
+      // render stay identical, as useSyncExternalStore requires.
+      if (!timer && Date.now() - now >= TICK_MS) now = Date.now();
+      return now;
+    },
   };
 })();
 

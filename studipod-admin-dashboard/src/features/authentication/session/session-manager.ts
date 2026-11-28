@@ -36,6 +36,16 @@ export function onSessionCleared(listener: () => void): () => void {
   return () => clearListeners.delete(listener);
 }
 
+/**
+ * Records why the visitor is being sent to sign-in. After an expired session the
+ * email is kept for prefill; a repeated notice never erases an email already known.
+ */
+function recordSignOutNotice(notice: SignInNotice, email: string | null): void {
+  const flow = useAuthFlowStore.getState();
+  const prefill = notice === 'session-expired' ? (email ?? flow.prefillEmail) : null;
+  flow.setNotice(notice, prefill);
+}
+
 function clearLocalSession(): void {
   useSessionStore.getState().clearSession();
   clearListeners.forEach((listener) => listener());
@@ -76,9 +86,7 @@ export function establishSession(session: Session): void {
 export async function signOut(notice: SignInNotice = 'signed-out'): Promise<void> {
   const { accessToken, administrator } = useSessionStore.getState();
   clearLocalSession();
-  useAuthFlowStore
-    .getState()
-    .setNotice(notice, notice === 'session-expired' ? (administrator?.email ?? null) : null);
+  recordSignOutNotice(notice, administrator?.email ?? null);
   broadcast({ type: 'signed-out', notice });
   try {
     await (await loadAuthApi()).signOut({ accessToken });
@@ -91,7 +99,7 @@ export async function signOut(notice: SignInNotice = 'signed-out'): Promise<void
 export function applyRemoteSignOut(notice: SignInNotice): void {
   const email = useSessionStore.getState().administrator?.email ?? null;
   clearLocalSession();
-  useAuthFlowStore.getState().setNotice(notice, notice === 'session-expired' ? email : null);
+  recordSignOutNotice(notice, email);
 }
 
 /** Connects the HTTP client to the session so authenticated requests carry the token. */
