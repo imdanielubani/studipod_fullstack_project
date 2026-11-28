@@ -1,0 +1,28 @@
+# Build context for `docker build -t studipod-webapp .` (run from this folder).
+# Keep dependencies, build output, secrets and non-runtime folders out of the image.
+node_modules
+.next
+out
+coverage
+playwright-report
+test-results
+blob-report
+public/sw.js
+public/sw.js.map
+.env
+.env.*
+!.env*.example
+*.pem
+*.key
+*.p12
+*.log
+.git
+.github
+docs
+infrastructure
+tests
+playwright.config.ts
+vitest.config.mts
+docker-compose.yml
+Dockerfile
+README.md
