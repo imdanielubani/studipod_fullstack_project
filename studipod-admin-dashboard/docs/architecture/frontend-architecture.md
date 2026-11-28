@@ -28,7 +28,7 @@ payment provider secrets or authentication logic.
 src/
 ├── app/                  Routing only: layouts, pages, route boundaries
 │   ├── (auth)/           Signed-out screens: sign-in, code, password reset, access denied
-│   ├── (dashboard)/      Every protected area; shares the session gate and app shell
+│   ├── (dashboard)/      Every protected area: session gate, app shell, catch-all route
 │   └── api/health/       Container liveness probe
 ├── components/           Shared, feature-agnostic UI
 │   ├── ui/               shadcn/ui primitives (generated with the shadcn CLI)
@@ -71,34 +71,30 @@ Rules:
 - Features never import from another feature's internals, only from its `index.ts`.
 - `components/` never imports from `features/`.
 
-### Route and feature map
+### Routes
 
-| Route (`(dashboard)/…`) | Feature folder(s)                          |
-| ----------------------- | ------------------------------------------ |
-| `dashboard`             | `dashboard-overview`                       |
-| `users`                 | `user-management`                          |
-| `examinations`          | `examination-management`                   |
-| `subjects`              | `subject-management`                       |
-| `matching`              | `matching-management`                      |
-| `bookings`              | `booking-management`                       |
-| `scheduling`            | `scheduling-management`                    |
-| `messaging`             | `messaging-management`                     |
-| `groups`                | `group-management`                         |
-| `moderation`            | `moderation`                               |
-| `video-sessions`        | `video-management`                         |
-| `subscriptions`         | `subscription-management`                  |
-| `payments`              | `payment-management`                       |
-| `notifications`         | `notification-management`                  |
-| `resources`             | `resource-management`                      |
-| `analytics`             | `analytics`                                |
-| `support`               | `support-management`                       |
-| `administrators`        | `administrator-management`                 |
-| `roles-permissions`     | `role-management`, `permission-management` |
-| `audit-logs`            | `audit-management`                         |
-| `system-settings`       | `system-management`                        |
-| `(auth)/…`              | `authentication`                           |
+Console addresses come from the navigation model in `src/config/navigation.ts` (see the
+[app shell](app-shell.md)). Until a dedicated page exists, each address is served by the
+catch-all route `app/(dashboard)/[...slug]`. Build a screen by adding
+`app/(dashboard)/<address>/page.tsx` and its feature folder:
 
-Route folders contain only `.gitkeep` until a page is built, so they create no routes yet.
+| Sidebar group    | Addresses                                                                                                 | Feature folder(s)                                                                                               |
+| ---------------- | --------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| Dashboard        | `/dashboard`, `/analytics`                                                                                | `dashboard-overview`, `analytics`                                                                               |
+| Users            | `/users`, `/users/verification`                                                                           | `user-management`                                                                                               |
+| Examinations     | `/examinations`, `/subjects`, `/examinations/import-export`                                               | `examination-management`, `subject-management`                                                                  |
+| Matching         | `/matching`, `/matching/activity`                                                                         | `matching-management`                                                                                           |
+| Bookings         | `/bookings`, `/bookings/problems`, `/scheduling`                                                          | `booking-management`, `scheduling-management`                                                                   |
+| Community        | `/groups`                                                                                                 | `group-management`                                                                                              |
+| Moderation       | `/moderation`, `/moderation/blocks`, `/moderation/history`                                                | `moderation`                                                                                                    |
+| Support          | `/support`, `/support/agents`, `/support/help-centre`                                                     | `support-management`                                                                                            |
+| Content          | `/resources`, `/resources/review`                                                                         | `resource-management`                                                                                           |
+| Billing          | `/billing`, `/billing/plans`, `/subscriptions`, `/payments`, `/billing/entitlements`, `/billing/settings` | `subscription-management`, `payment-management`                                                                 |
+| Video            | `/video-sessions`, `/video-sessions/usage`, `/video-sessions/failures`                                    | `video-management`                                                                                              |
+| Notifications    | `/notifications`, `/notifications/delivery-log`, `/notifications/reminders`                               | `notification-management`                                                                                       |
+| Admin & Security | `/administrators`, `/roles-permissions`, `/audit-logs`, `/security`                                       | `administrator-management`, `role-management`, `permission-management`, `audit-management`, `system-management` |
+| Account          | `/profile`, `/profile/security`                                                                           | `administrator-management`                                                                                      |
+| Signed out       | `/sign-in`, `/sign-in/verify`, `/forgot-password`, `/reset-password`, `/access-denied`                    | `authentication`                                                                                                |
 
 ## Data fetching and caching
 

@@ -8,8 +8,10 @@ payments, support, administrators, roles, audit logs and system settings.
 The dashboard is a **frontend only**. It talks to `studipod-backend` over REST and
 WebSocket; the backend owns data, business rules, authentication and authorisation.
 
-> **Status:** foundation plus administrator authentication: sign-in with an emailed code,
-> password reset, access denied, protected routes and the 24-hour inactivity timeout.
+> **Status:** foundation, administrator authentication (sign-in with an emailed code,
+> password reset, access denied, protected routes, 24-hour inactivity timeout) and the app
+> shell (sidebar, page header, search, notifications, account menu, mobile drawer).
+> Console screens inside the shell are not built yet.
 > The backend authentication module is not built yet; development uses an in-memory mock
 > of the [admin authentication contract](docs/api/admin-authentication-contract.md).
 
@@ -83,6 +85,7 @@ Empty folders are kept with `.gitkeep` until they receive code.
 | Topic                       | Document                                                                                   |
 | --------------------------- | ------------------------------------------------------------------------------------------ |
 | Frontend architecture       | [docs/architecture/frontend-architecture.md](docs/architecture/frontend-architecture.md)   |
+| App shell                   | [docs/architecture/app-shell.md](docs/architecture/app-shell.md)                           |
 | Backend API integration     | [docs/api/api-integration.md](docs/api/api-integration.md)                                 |
 | Admin authentication API    | [docs/api/admin-authentication-contract.md](docs/api/admin-authentication-contract.md)     |
 | Authentication and sessions | [docs/security/authentication-and-session.md](docs/security/authentication-and-session.md) |
