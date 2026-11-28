@@ -32,6 +32,7 @@ export function TextField({
   id,
   className,
   disabled,
+  'aria-describedby': describedBy,
   ...inputProps
 }: TextFieldProps) {
   const generatedId = useId();
@@ -39,6 +40,9 @@ export function TextField({
   const messageId = `${inputId}-message`;
   const invalid = isInvalid || Boolean(error);
   const message = error ?? helper;
+  const describedByIds = [message ? messageId : null, describedBy ?? null]
+    .filter(Boolean)
+    .join(' ');
 
   return (
     <div className={cn('flex w-full flex-col gap-2', className)}>
@@ -48,10 +52,12 @@ export function TextField({
       <div
         className={cn(
           'flex h-10 w-full items-center gap-2 rounded-md border bg-surface px-3 transition-[border-color,box-shadow]',
-          'border-line has-[input:not(:placeholder-shown)]:border-line-strong',
-          'focus-within:border-focus focus-within:shadow-[0_0_0_1px_var(--sp-border-focus),0_0_0_4px_rgb(37_99_235/0.35)] focus-within:has-[input:not(:placeholder-shown)]:border-focus',
-          invalid &&
-            'border-danger focus-within:border-danger focus-within:shadow-[0_0_0_1px_var(--sp-border-danger),0_0_0_4px_rgb(220_38_38/0.2)] has-[input:not(:placeholder-shown)]:border-danger focus-within:has-[input:not(:placeholder-shown)]:border-danger',
+          invalid
+            ? 'border-danger focus-within:shadow-[0_0_0_1px_var(--sp-border-danger),0_0_0_4px_rgb(220_38_38/0.2)]'
+            : [
+                'border-line has-[input:not(:placeholder-shown)]:border-line-strong',
+                'focus-within:border-focus focus-within:shadow-[0_0_0_1px_var(--sp-border-focus),0_0_0_4px_rgb(37_99_235/0.35)] focus-within:has-[input:not(:placeholder-shown)]:border-focus',
+              ],
           disabled && 'bg-subtle',
         )}
       >
@@ -65,7 +71,7 @@ export function TextField({
           id={inputId}
           disabled={disabled}
           aria-invalid={invalid || undefined}
-          aria-describedby={message ? messageId : undefined}
+          aria-describedby={describedByIds || undefined}
           className={cn(
             'min-w-0 flex-1 bg-transparent text-body-md text-fg outline-none placeholder:text-fg-tertiary',
             'disabled:cursor-not-allowed disabled:text-fg-disabled',
