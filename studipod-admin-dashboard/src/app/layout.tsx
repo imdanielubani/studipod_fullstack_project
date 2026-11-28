@@ -3,6 +3,7 @@ import { Inter, JetBrains_Mono } from 'next/font/google';
 import type { ReactNode } from 'react';
 
 import { cn } from '@/lib/utils';
+import { AppProviders } from '@/providers/app-providers';
 
 import './globals.css';
 
@@ -36,7 +37,9 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   return (
     <html lang="en-GB" className={cn(inter.variable, jetBrainsMono.variable)}>
-      <body>{children}</body>
+      <body>
+        <AppProviders>{children}</AppProviders>
+      </body>
     </html>
   );
 }
