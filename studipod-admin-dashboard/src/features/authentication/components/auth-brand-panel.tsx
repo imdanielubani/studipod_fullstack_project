@@ -1,6 +1,7 @@
 import { CircleCheck, Lock, Mail, Sparkle, type LucideIcon } from 'lucide-react';
 import Image from 'next/image';
 
+import { BrandLogo } from '@/components/shared/brand-logo';
 import { APP_CONFIG, currentYear } from '@/config/app';
 import { cn } from '@/lib/utils';
 
@@ -26,19 +27,6 @@ const TEAM_AVATARS: ReadonlyArray<{ initials: string; colour: string }> = [
   { initials: '+5', colour: 'bg-[var(--sp-avatar-slate)]' },
 ];
 
-export function BrandLogo({ className }: { className?: string }) {
-  return (
-    <Image
-      src="/logos/studipod-logo-reverse.png"
-      alt={APP_CONFIG.productName}
-      width={1470}
-      height={261}
-      priority
-      className={cn('h-auto', className)}
-    />
-  );
-}
-
 /** Left half of every desktop authentication screen. Decorative except the logo. */
 export function AuthBrandPanel({ className }: { className?: string }) {
   return (
@@ -63,7 +51,7 @@ export function AuthBrandPanel({ className }: { className?: string }) {
         className="absolute inset-0 -z-10 bg-[linear-gradient(to_right,var(--sp-brand-grid-line)_1px,transparent_1px),linear-gradient(to_bottom,var(--sp-brand-grid-line)_1px,transparent_1px)] bg-[size:48px_48px]"
       />
 
-      <BrandLogo className="absolute top-12 left-12 w-[150px]" />
+      <BrandLogo priority className="absolute top-12 left-12 w-[150px]" />
 
       <ul aria-hidden className="contents">
         {FEATURE_CHIPS.map(({ label, Icon, left, top }) => (
@@ -126,7 +114,7 @@ export function AuthMobileHeader({ className }: { className?: string }) {
         className,
       )}
     >
-      <BrandLogo className="w-[104px]" />
+      <BrandLogo priority className="w-[104px]" />
       <p className="text-h3 font-semibold tracking-normal">
         Run {APP_CONFIG.productName} with confidence.
       </p>
