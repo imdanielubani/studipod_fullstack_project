@@ -76,6 +76,21 @@
   --sp-icon-warning: #d97706;
   --sp-icon-success: #16a34a;
 
+  /* Authentication brand panel */
+  --sp-gradient-brand-panel: linear-gradient(
+    137.7deg,
+    #060a1f 14.286%,
+    #172554 50%,
+    #1d4ed8 85.714%
+  );
+  --sp-brand-grid-line: rgb(255 255 255 / 0.05);
+  --sp-glass-bg: rgb(255 255 255 / 0.08);
+  --sp-glass-border: rgb(255 255 255 / 0.22);
+  --sp-avatar-blue: #60a5fa;
+  --sp-avatar-rose: #fb7185;
+  --sp-avatar-amber: #fbbf24;
+  --sp-avatar-slate: #e2e8f0;
+
   /* Progress (session countdown) */
   --sp-warning-track: #fde68a;
   --sp-warning-fill: #d97706;
