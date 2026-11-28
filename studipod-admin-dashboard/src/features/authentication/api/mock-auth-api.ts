@@ -226,8 +226,10 @@ export function createMockAuthApi({ latencyMs = DEFAULT_LATENCY_MS } = {}): Auth
     },
 
     async signOut() {
-      await delay();
+      // Forget the simulated refresh cookie first, so a reload during the
+      // simulated latency cannot revive the session.
       storeSession(null);
+      await delay();
     },
 
     async forgotPassword() {
