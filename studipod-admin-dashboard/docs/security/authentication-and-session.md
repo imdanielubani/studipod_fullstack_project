@@ -1,9 +1,25 @@
 # Authentication and session architecture
 
-> **Status:** plan only. No authentication code exists in the dashboard yet. The backend
-> (`studipod-backend`) owns every authentication and authorisation decision; this document
-> describes how the dashboard takes part. Endpoint paths are deliberately not listed here:
-> they come from the backend OpenAPI document once the admin authentication module exists.
+> **Status:** implemented in the dashboard against the proposed
+> [admin authentication contract](../api/admin-authentication-contract.md). The backend
+> module does not exist yet, so local development and the end-to-end tests use the
+> development mock. The backend (`studipod-backend`) owns every authentication and
+> authorisation decision; this document describes how the dashboard takes part.
+
+## Screens and code
+
+| Route                     | Screen                                        | Code (`src/features/authentication/components/`) |
+| ------------------------- | --------------------------------------------- | ------------------------------------------------ |
+| `/sign-in`                | Work email and password, all error states     | `sign-in-form.tsx`                               |
+| `/sign-in/verify`         | Emailed 6-digit code (step 2 of 2)            | `verify-code-form.tsx`                           |
+| `/forgot-password`        | Request a reset link, "check your email"      | `forgot-password-form.tsx`                       |
+| `/reset-password?token=…` | Choose a new password, expired link           | `reset-password-form.tsx`                        |
+| `/access-denied`          | Valid account without an admin role           | `access-denied-view.tsx`                         |
+| `(dashboard)/*`           | Session gate, timeout warning, expired dialog | `session-gate.tsx`, `session-timeout.tsx`        |
+
+State between screens (pending code challenge, access-denied details, sign-in notices,
+prefilled email) lives in an in-memory store (`session/auth-flow-store.ts`), never in the
+URL, so email addresses and challenge ids stay out of browser history and server logs.
 
 ## Principles
 
@@ -36,10 +52,10 @@ Flow:
 4. On a valid code the backend issues the **access token** (response body) and the
    **refresh token** (`Set-Cookie`, `HttpOnly; Secure; SameSite=Strict`, path-scoped to
    the auth routes).
-5. The dashboard stores the access token in memory (Zustand store, not persisted), loads
-   the current administrator profile and effective permissions, then navigates to the
-   originally requested page (validated as a same-origin relative path to prevent open
-   redirects).
+5. The dashboard keeps the access token, administrator profile and effective permissions
+   from the session response in memory (Zustand store, not persisted) and opens the
+   dashboard. Returning to the originally requested page is deferred until there are
+   console pages worth deep-linking; it must accept same-origin relative paths only.
 
 Error messages never reveal whether an email is registered.
 
@@ -92,11 +108,11 @@ warning** first, and no maximum session length.
 
 Two layers, neither of which replaces backend authorisation:
 
-| Layer                   | Mechanism                                                          | Purpose                                                                                     |
-| ----------------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------- |
-| Server (request proxy)  | Next.js `src/proxy.ts` (the Next.js 16 replacement for middleware) | Security headers/CSP nonce; optimistic redirect of obviously signed-out requests to sign-in |
-| Client (session gate)   | Dashboard route-group layout waits for the silent refresh          | Never renders protected UI without a session                                                |
-| Backend (authoritative) | Admin guard + permission guard on every request                    | Actual access control                                                                       |
+| Layer                   | Mechanism                                                 | Purpose                                                                                     |
+| ----------------------- | --------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| Server (request proxy)  | Next.js `src/proxy.ts` (planned, not implemented yet)     | Security headers/CSP nonce; optimistic redirect of obviously signed-out requests to sign-in |
+| Client (session gate)   | Dashboard route-group layout waits for the silent refresh | Never renders protected UI without a session                                                |
+| Backend (authoritative) | Admin guard + permission guard on every request           | Actual access control                                                                       |
 
 The `(auth)` route group holds sign-in screens; the `(dashboard)` route group holds every
 protected page and shares the session gate.
@@ -129,13 +145,13 @@ A backend-for-frontend that proxies all API traffic through the dashboard server
 
 ## Unauthorised and forbidden access
 
-| Response                       | Meaning                     | Dashboard behaviour                                                   |
-| ------------------------------ | --------------------------- | --------------------------------------------------------------------- |
-| `401` (after a failed refresh) | No valid session            | Clear state, go to sign-in, return to the original page afterwards    |
-| `403`                          | Signed in, lacks permission | Show the `forbidden` screen (or an inline notice for a single action) |
-| Account locked / disabled      | Backend error code          | Show the specific message from the stable error `code`                |
+| Response                         | Meaning                     | Dashboard behaviour                                                |
+| -------------------------------- | --------------------------- | ------------------------------------------------------------------ |
+| `401` (after a failed refresh)   | No valid session            | Clear state, go to sign-in, return to the original page afterwards |
+| `403` on an admin request        | Signed in, lacks permission | Inline "no permission" notice (built with the console pages)       |
+| `ADMIN_ACCESS_DENIED` at sign-in | Valid account, not an admin | The `/access-denied` screen                                        |
+| Account locked / disabled        | Backend error code          | Show the specific message from the stable error `code`             |
 
-The `src/app/unauthorized` and `src/app/forbidden` folders are reserved for these screens.
 Dashboard code branches on the backend's stable error `code`, never on `message` text.
 
 ## Sensitive actions
@@ -163,5 +179,5 @@ code, performs the action and writes the audit record.
 | Session hint cookie    | Not planned                             | Needed for server-side optimistic redirects |
 | Admin auth cookie path | Refresh cookie scoped to `/api/v1/auth` | Admin realm path to be confirmed            |
 
-These must be resolved in the backend admin authentication module before the dashboard
-implements sign-in.
+These must be resolved when the backend admin authentication module is built. The
+dashboard already follows the confirmed product rules.

@@ -8,9 +8,10 @@ payments, support, administrators, roles, audit logs and system settings.
 The dashboard is a **frontend only**. It talks to `studipod-backend` over REST and
 WebSocket; the backend owns data, business rules, authentication and authorisation.
 
-> **Status:** foundation only. Tooling, configuration, folder structure, Docker and
-> documentation are in place. No screens, API integrations or authentication flows are
-> implemented yet.
+> **Status:** foundation plus administrator authentication: sign-in with an emailed code,
+> password reset, access denied, protected routes and the 24-hour inactivity timeout.
+> The backend authentication module is not built yet; development uses an in-memory mock
+> of the [admin authentication contract](docs/api/admin-authentication-contract.md).
 
 ## Stack
 
@@ -25,7 +26,8 @@ Exact versions are pinned in `package.json`.
 - Node.js 22.12 or newer (`.nvmrc` pins 22 to match the production image)
 - pnpm 12 (`npm install --global pnpm@12.21.0`)
 - Docker (optional, for the production image)
-- A running `studipod-backend` for anything beyond the static shell
+- A running `studipod-backend` once its admin authentication module exists (until then,
+  use the development mock below)
 
 ## Getting started
 
@@ -34,6 +36,12 @@ cp .env.development.example .env.local
 pnpm install
 pnpm dev                 # http://localhost:3100
 ```
+
+`.env.development.example` turns on the authentication mock (`NEXT_PUBLIC_AUTH_MOCK=true`).
+Sign in with any `@studipod.com` email, the password `correct-horse-battery` and the code
+`123456`. Every other scenario (locked account, access denied, expired links and so on) is
+listed in the [contract document](docs/api/admin-authentication-contract.md#development-mock).
+Production builds never include the mock.
 
 ## Scripts
 
@@ -45,9 +53,11 @@ pnpm dev                 # http://localhost:3100
 | `pnpm typecheck`               | TypeScript, no emit                       |
 | `pnpm lint` / `lint:fix`       | ESLint                                    |
 | `pnpm format` / `format:check` | Prettier (with Tailwind class sorting)    |
+| `pnpm test`                    | Unit and component tests (Vitest)         |
+| `pnpm test:coverage`           | Unit tests with a coverage report         |
 | `pnpm test:e2e`                | Playwright end-to-end tests (`tests/e2e`) |
 | `pnpm test:e2e:install`        | Download the Playwright Chromium browser  |
-| `pnpm validate`                | Typecheck, lint, format check and build   |
+| `pnpm validate`                | Typecheck, lint, format, tests and build  |
 | `pnpm audit`                   | Fail on high or critical advisories       |
 
 Add shadcn/ui primitives as they are needed: `pnpm dlx shadcn@latest add button`.
@@ -57,11 +67,11 @@ They are generated into `src/components/ui`.
 
 ```text
 public/            Static assets (images, icons, logos, fonts)
-src/app/           Routes: (auth), (dashboard)/<area>, unauthorized, forbidden, api/health
+src/app/           Routes: (auth) signed-out screens, (dashboard)/<area>, api/health
 src/components/    Shared UI: ui, layout, navigation, data-table, charts, forms, dialogs, filters, shared
 src/features/      One folder per admin area (api, components, schemas, types)
 src/hooks/ lib/ providers/ services/ stores/ types/ schemas/ utils/ config/
-tests/e2e/         Playwright specs
+tests/e2e/         Playwright specs (unit tests sit next to the code as *.test.ts[x])
 docs/              Architecture, API integration, security, deployment
 infrastructure/    Dokploy and Cloudflare guides
 ```
@@ -74,6 +84,7 @@ Empty folders are kept with `.gitkeep` until they receive code.
 | --------------------------- | ------------------------------------------------------------------------------------------ |
 | Frontend architecture       | [docs/architecture/frontend-architecture.md](docs/architecture/frontend-architecture.md)   |
 | Backend API integration     | [docs/api/api-integration.md](docs/api/api-integration.md)                                 |
+| Admin authentication API    | [docs/api/admin-authentication-contract.md](docs/api/admin-authentication-contract.md)     |
 | Authentication and sessions | [docs/security/authentication-and-session.md](docs/security/authentication-and-session.md) |
 | Security architecture       | [docs/security/security-architecture.md](docs/security/security-architecture.md)           |
 | Environment variables       | [docs/deployment/environment-variables.md](docs/deployment/environment-variables.md)       |

@@ -1,8 +1,9 @@
 # Backend API integration
 
-> **Status:** structure only. No API client or endpoint calls exist yet. Endpoints are
-> added from the backend's OpenAPI document as each backend module ships; none are
-> invented in the dashboard.
+> **Status:** the HTTP client (`src/services/http/`) and the administrator authentication
+> calls exist. Authentication follows the proposed
+> [admin authentication contract](admin-authentication-contract.md); every other endpoint is
+> added from the backend's OpenAPI document as each backend module ships.
 
 ## Sources of truth
 

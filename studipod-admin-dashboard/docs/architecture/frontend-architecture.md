@@ -27,10 +27,8 @@ payment provider secrets or authentication logic.
 ```text
 src/
 ├── app/                  Routing only: layouts, pages, route boundaries
-│   ├── (auth)/           Sign-in screens (no session required)
+│   ├── (auth)/           Signed-out screens: sign-in, code, password reset, access denied
 │   ├── (dashboard)/      Every protected area; shares the session gate and app shell
-│   ├── unauthorized/     Shown when the session is missing or expired
-│   ├── forbidden/        Shown when the administrator lacks a permission
 │   └── api/health/       Container liveness probe
 ├── components/           Shared, feature-agnostic UI
 │   ├── ui/               shadcn/ui primitives (generated with the shadcn CLI)
